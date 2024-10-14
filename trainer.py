@@ -39,7 +39,7 @@ if __name__ == '__main__':
         queue_in = Queue(1024)
         queue_out = Queue(1024)
         
-        subprocess = Process(target=run_p,args=(n.addr[0],queue_out,queue_in,4,curr_id,"cuda")) 
+        subprocess = Process(target=run_p,args=(n.addr[0],queue_out,queue_in,curr_id,str(curr_id),"cuda")) 
         trainingp = TrainingProtocol(4, 1, queue_in, queue_out,subprocess)
         trainingp.set_lower(stream)
         subprocess.start()

@@ -45,8 +45,10 @@ class Loss:
 @dataclass
 class Aggregate:
     tag: bytes
-class LLaMaFS(torch.nn.module):
+class LLaMaFS(torch.nn.Module):
     def __init__(self, head, tail):
+        super().__init__()
+
         self.head = head
         self.tail = tail
 def run_p(maind_addr,queue_in: Queue, queue_out: Queue, node_id: int = 0, stage: int = 0,
@@ -58,7 +60,7 @@ def run_p(maind_addr,queue_in: Queue, queue_out: Queue, node_id: int = 0, stage:
         ts = TinyStories(tkns,batch_size = 32, seq_l=seq_l)
         vals = TinyStories(tkns,batch_size = 32, seq_l=seq_l, split = "validation")
         head = LLamaFirstStage(tkns.vocab_size,dmodel=256,num_heads=8,multiple_of=256,ctx_size=seq_l,n_layers=4)
-        tail = LLamaClassification(tkns.vocab_size,type="cross_entropy")
+        tail = LLamaClassification(tkns.vocab_size,dmodel=256,type="cross_entropy")
         net = LLaMaFS(head,tail)
         optimizer = optim.SGD(net.parameters(),lr=4e-3,momentum=0,dampening=0,weight_decay=0,nesterov=False)
         with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
@@ -90,7 +92,7 @@ class SubP(object):
         self.peer_parameters = dict()
         self.prev_aggregation = 0
         self.started = True
-        self.world_size = world_size
+        
         self.sizes = []
         self.len_sizes = []
         self.ttl_l = 0
@@ -110,6 +112,7 @@ class SubP(object):
         for param in self.net.parameters():
             self.sizes.append(param.shape)
             self.len_sizes.append(len(param.view(-1)))
+        self.start()
         
 
 
@@ -124,12 +127,6 @@ class SubP(object):
                 task = self.queue_in.get(True)
                 if isinstance(task, Start):
                     
-                    if self.iteration >= 80000:
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"SAVING\n")
-                            save(net.state_dict(), f"gw4p50k1_{self.node_id}.pth")
-                            time.sleep(10)
-                            exit()
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                         log.write(f"=======NEW ITERATION:========\n")
                     
