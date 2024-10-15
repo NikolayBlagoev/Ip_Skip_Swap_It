@@ -137,13 +137,6 @@ class SubP(object):
                     except StopIteration:
                         
                         self.epoch += 1
-                        if self.iteration >= 80000:
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"SAVING\n")
-                            save(net.state_dict(), f"gw4p50k1_{self.node_id}.pth")
-                            time.sleep(10)
-                            exit()
-                        
                         self.dl = iter(self.ds)
                         
                         x, y = next(self.dl)
@@ -213,6 +206,8 @@ class SubP(object):
                     
                 
                 elif isinstance(task, Aggregate):
+                    if len(self.aggregation) == 0:
+                        continue
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                         log.write(f"===AGGEGATING==== {len(self.aggregation)}\n")
                     tmp = torch.stack(self.aggregation)

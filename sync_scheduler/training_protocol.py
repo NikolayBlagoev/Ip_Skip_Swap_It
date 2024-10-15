@@ -60,11 +60,18 @@ class TrainingProtocol(AbstractProtocol):
         for i in range(3):
             tag = int(self.tag).to_bytes(4,byteorder="big")
             self.tag += 1
-            for j in range(4):
-                if (i+1) == j and self.iteration % 10 != 0:
-                    tag += int(0).to_bytes(1,byteorder="big")
-                else:
-                    tag += int(1).to_bytes(1,byteorder="big")
+            if self.iteration % 10 != 7:
+                for j in range(4):
+                    if (i+1) == j and self.iteration % 10 != 0:
+                        tag += int(0).to_bytes(1,byteorder="big")
+                    else:
+                        tag += int(1).to_bytes(1,byteorder="big")
+            else:
+                for j in range(4):
+                    if (i+1) == j or j == 1:
+                        tag += int(0).to_bytes(1,byteorder="big")
+                    else:
+                        tag += int(1).to_bytes(1,byteorder="big")
 
             self.queue_out.put(Start(tag), True)
 
