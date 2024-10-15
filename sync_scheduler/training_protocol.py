@@ -61,10 +61,10 @@ class TrainingProtocol(AbstractProtocol):
             tag = int(self.tag).to_bytes(4,byteorder="big")
             self.tag += 1
             for j in range(4):
-                if (i+1) == j:
-                    tag += b'x\00'
+                if (i+1) == j and self.iteration % 10 != 0:
+                    tag += int(0).to_bytes(1,byteorder="big")
                 else:
-                    tag += b'x\01'
+                    tag += int(1).to_bytes(1,byteorder="big")
 
             self.queue_out.put(Start(tag), True)
 
@@ -101,15 +101,18 @@ class TrainingProtocol(AbstractProtocol):
                         if path[j] == 1:
                             nxt = j
                             break
-
+                        j += 1
                     if nxt == None:
                         nxt = 0
+                        j = nxt
+                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                        log.write(f"SENDINGTO {nxt} {path} {path[j]}\n")
                     p = await self._lower_find_peer(SHA256(str(nxt)))
-                    asyncio.get_event_loop().create_task(self.send_stream(p.id_node,task.mb))
+                    asyncio.get_event_loop().create_task(self.send_stream(p.id_node,task.mb,task.tag))
                     continue
                 elif isinstance(task, Backward):
                     prev = self.outstanding[task.tag]
-                    asyncio.get_event_loop().create_task(self.send_stream(prev,task.mb))
+                    asyncio.get_event_loop().create_task(self.send_stream(prev,task.mb,task.tag))
                     continue
             except Exception as e:
                 with open(f'log{self.peer.pub_key}.txt', 'a') as f:
@@ -137,10 +140,11 @@ class TrainingProtocol(AbstractProtocol):
     
     def aggregate(self):
         self.outstanding.clear()
+        self.iteration += 1
         if self.peer.pub_key == "0":
             for j in range(1,4):
                 p = self._lower_get_peer(SHA256(str(j)))
-                self.send_datagram(b'x\00',p.addr)
+                asyncio.get_event_loop().create_task(self.send_datagram(b'x\00',p.addr))
         self.queue_out.put(Aggregate(b'x\01'),True)
         if self.peer.pub_key == "0":
             
@@ -150,29 +154,38 @@ class TrainingProtocol(AbstractProtocol):
 
 
     @bindfrom("stream_callback")
-    def process_data(self, data:bytes, nodeid, addr, retry = False):
+    def process_data(self, data:bytes, nodeid, addr):
         tag = data[0:8]
         path = tag[4:]
         data = data[8:]
-        if tag in self.outstanding:
-            self.queue_out.put(Backward(data,tag),True)
-            if self.peer.pub_key == "0":
-                self.aggregated += 1
-                if self.aggregated == 3:
-                    self.aggregated = 0
-                    self.aggregate()
+        tag = bytes(tag)
+        
+        try:
+            if self.outstanding.get(tag) != None:
+                self.queue_out.put(Backward(data,tag),True)
+                if self.peer.pub_key == "0":
+                    self.aggregated += 1
+                    if self.aggregated == 3:
+                        self.aggregated = 0
+                        self.aggregate()
 
-        else:
-            self.outstanding[tag] = nodeid
-            if self.peer.pub_key == "0":
-                self.queue_out.put(Loss(data,tag),True)
             else:
-                self.queue_out.put(Forward(data,tag),True)
+                self.outstanding[tag] = nodeid
+                if self.peer.pub_key == "0":
+                    self.queue_out.put(Loss(data,tag),True)
+                else:
+                    self.queue_out.put(Forward(data,tag),True)
+        except Exception as e:
+                with open(f'log{self.peer.pub_key}.txt', 'a') as f:
+                    f.write(str(e))
+                    f.write("!!!!!!!!!!!!!!!\n")
+                    f.write(format_exc())
     async def send_stream(self, node_id, data, tag=b'x\00'):
-        # print("SENDING TO")
+        
         await self._lower_find_peer(bytes(node_id))
         p = self._lower_get_peer(node_id)
         await self._lower_open_connection(p.addr[0], p.tcp, p.id_node, port_listen = 0)
+        
         await self._lower_send_stream(node_id, tag+data)
         return
     

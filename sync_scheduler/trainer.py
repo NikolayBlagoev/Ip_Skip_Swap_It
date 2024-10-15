@@ -44,7 +44,7 @@ if __name__ == '__main__':
         trainingp.set_lower(stream)
         subprocess.start()
         
-        me = Node(my_peer , trainingp,ip_addr="127.0.0.1", port = 10015 if curr_id == 0 else port)
+        me = StreamNode(my_peer , trainingp,ip_addr="127.0.0.1", port = 10015 if curr_id == 0 else port)
         # print( "TCP", me.tcp_port)
 
         

@@ -55,7 +55,7 @@ def run_p(maind_addr,queue_in: Queue, queue_out: Queue, node_id: int = 0, stage:
                     device = "cuda"):
     manual_seed(0)
     seq_l = 128
-    if stage == 0:
+    if node_id == 0:
         tkns = SPTokenizer()
         ts = TinyStories(tkns,batch_size = 32, seq_l=seq_l)
         vals = TinyStories(tkns,batch_size = 32, seq_l=seq_l, split = "validation")
@@ -101,7 +101,7 @@ class SubP(object):
         self.buffer_in = {}
         self.buffer_out= {}
         self.optimizer.zero_grad()
-        if stage == 0:
+        if node_id == 0:
             self.ds = ds
             self.dl = iter(ds)
             self.valds = vals
@@ -149,12 +149,11 @@ class SubP(object):
                         x, y = next(self.dl)
                     with torch.no_grad():
                         x = x.to(self.device)
-                    x.requires_grad = True
-                    x.retain_grad()
+                        y = y.to(self.device)
                     self.buffer_in[task.tag] = x
                     
                     
-                    
+                     
                     self.target[task.tag] = y
                     x = self.net.head(x)
                     x.retain_grad()
@@ -172,7 +171,10 @@ class SubP(object):
                     self.queue_out.put(Backward(pickle.dumps(x.grad.to("cpu")),task.tag))
                     
                 elif isinstance(task, Forward):
+                    with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                        log.write(f"Forward")
                     x = pickle.loads(task.mb)
+
                     with torch.no_grad():
                         x = x.to(self.device)
                     x.requires_grad = True
@@ -188,11 +190,11 @@ class SubP(object):
                     self.optimizer.zero_grad()
                     
                     output = pickle.loads(task.mb)
-                    with no_grad():
+                    with torch.no_grad():
                         output = output.to(self.device)
                     inp_batch = self.buffer_out[task.tag]
                     inp_batch.backward(output)
-                    if self.stage != 0:
+                    if self.node_id != 0:
                         self.queue_out.put(Backward(pickle.dumps(inp_batch.grad.to("cpu")),task.tag),True)
                     
                     tmp = []
@@ -202,7 +204,7 @@ class SubP(object):
                             tmp.append(zeros_like(param).view(-1))
                             
                             continue
-                        tmp.append(param.grad.dteach().clone().view(-1))
+                        tmp.append(param.grad.detach().clone().view(-1))
                     prev_grad = cat(tmp).to("cpu")
                     self.aggregation.append(prev_grad)
                     del self.buffer_in[task.tag]
@@ -216,17 +218,19 @@ class SubP(object):
                     tmp = torch.stack(self.aggregation)
                     tmp = torch.mean(tmp, dim = 0).to(self.device)
                     i = 0
+                    self.iteration += 1
                     while i < len(self.aggregation):
                         del self.aggregation[i]
                     
                     self.aggregation.clear()
                     
                     
-                    ret = split(ret, self.len_sizes)
+                    ret = split(tmp, self.len_sizes)
                     
                     for i, param in enumerate(self.net.parameters()):
                         param.data -= self.lr*ret[i].view(self.sizes[i]).to(self.device).data
-                    ret.clear()
+                    del ret
+                    del tmp
                     cuda.empty_cache()
         except Exception:
             with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
