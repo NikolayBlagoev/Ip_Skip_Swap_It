@@ -8,12 +8,18 @@ from deccom.nodes import StreamNode, Node
 from deccom.protocols.defaultprotocol import DefaultProtocol
 from deccom.peers import Peer
 from deccom.protocols.streamprotocol import StreamProtocol
-from .llm_subp import run_p
+from communications.llm_subp import run_p
 from multiprocessing import Lock, Process, Queue, current_process
 import json
 from pprint import pprint
-from .pp_protocol import PPProtocl
+from communications.pp_protocol import PPProtocl
 
+seq_l = 64
+n_layers = 2
+batch_size = 3
+dmodel = 128
+num_heads = 4
+multiple_of = 4
 
 if __name__ == '__main__':
     curr_id = int(argv[1])
@@ -50,7 +56,7 @@ if __name__ == '__main__':
         port = None
 
         protocol = DefaultProtocol()
-        gossip = KademliaDiscovery([],interval=12, always_split = True)
+        gossip = KademliaDiscovery([],interval=30, always_split = True)
         gossip.set_lower(protocol)
         
         n = Peer(("127.0.0.1", 10015))
@@ -64,7 +70,7 @@ if __name__ == '__main__':
         queue_in = Queue(1024)
         queue_out = Queue(1024)
         
-        subprocess = Process(target=run_p,args=(n.addr[0],queue_out,queue_in,curr_id,str(curr_id),"cuda")) 
+        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,"cuda")) 
         trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
         trainingp.set_lower(gossip)
         subprocess.start()
