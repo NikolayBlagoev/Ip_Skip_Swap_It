@@ -1,0 +1,80 @@
+import random
+import time
+from deccom.protocols.peerdiscovery.kademliadiscovery import KademliaDiscovery
+from sys import argv
+import asyncio
+from deccom.cryptofuncs.hash import SHA256
+from deccom.nodes import StreamNode, Node
+from deccom.protocols.defaultprotocol import DefaultProtocol
+from deccom.peers import Peer
+from deccom.protocols.streamprotocol import StreamProtocol
+from .llm_subp import run_p
+from multiprocessing import Lock, Process, Queue, current_process
+import json
+from pprint import pprint
+from .pp_protocol import PPProtocl
+
+
+if __name__ == '__main__':
+    curr_id = int(argv[1])
+    setting = argv[2]
+    loop = asyncio.new_event_loop()
+    config = json.loads("communication.json")
+    world_size = 0
+    own_stage = -1
+    rank_order = 0
+    partitions = config["partitions"]
+    memory = config["memory"]
+    send_mbs = 0
+    if setting == "baseline":
+        send_mbs = config["baseline-mb-count"]
+    for idx, v in enumerate(partitions):
+        if curr_id in v:
+            assert own_stage == -1
+            own_stage = idx
+            for idx2, v2 in enumerate(v):
+                if v2 == curr_id:
+                    rank_order = idx2
+                    break
+        world_size += len(v)
+    assert own_stage != -1
+    def commfunc(bid, ndkey):
+        if setting == "baseline":
+            if own_stage == len(partitions) - 1:
+                return None
+            return partitions[own_stage + 1][rank_order]
+            
+    while True:
+        my_peer  = Peer(None, pub_key=str(curr_id))
+        
+        port = None
+
+        protocol = DefaultProtocol()
+        gossip = KademliaDiscovery([],interval=12, always_split = True)
+        gossip.set_lower(protocol)
+        
+        n = Peer(("127.0.0.1", 10015))
+        if curr_id != 0:
+            gossip.bootstrap_peers.append(n)
+            time.sleep(1)
+        
+
+
+
+        queue_in = Queue(1024)
+        queue_out = Queue(1024)
+        
+        subprocess = Process(target=run_p,args=(n.addr[0],queue_out,queue_in,curr_id,str(curr_id),"cuda")) 
+        trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
+        trainingp.set_lower(gossip)
+        subprocess.start()
+        
+        me = Node(my_peer , trainingp,ip_addr="127.0.0.1", port = 10015 if curr_id == 0 else port)
+        # print( "TCP", me.tcp_port)
+
+        
+        print("run...")
+
+        loop.run_until_complete(me.listen())
+        loop.run_forever()
+        

@@ -2,7 +2,14 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+figs/
+tests/
+tests_*/
+test_*/
+*.pdf
+*.model
+*.pth
+*.zip
 # C extensions
 *.so
 
@@ -32,6 +39,7 @@ MANIFEST
 *.manifest
 *.spec
 *.txt
+*.pth
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
