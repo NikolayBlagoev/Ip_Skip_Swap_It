@@ -151,9 +151,9 @@ class SubP(object):
                     tm2 = time()
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
-                    
+                    ret = x.to("cpu")
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
-                    isend(x,task.to).wait()
+                    isend(ret,task.to).wait()
                     continue
                 elif isinstance(task, Loss):
                     x = zeros((task.B,task.T,task.C))
@@ -180,7 +180,9 @@ class SubP(object):
                     tm2 = time()
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
-                    isend(x.grad, task.frm)
+                    ret = x.grad
+                    ret = ret.to("cpu")
+                    isend(ret.grad, task.frm)
                     self.queue_out.put(Backward(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator), True)
                 
                 elif isinstance(task, Forward):
@@ -214,6 +216,7 @@ class SubP(object):
                     tm2 = time()
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
+                    ret = x.to("cpu")
                     isend(x)
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
                     continue
@@ -234,7 +237,10 @@ class SubP(object):
                         sleep(self.process_time - (tm2 - tm1))
                     self.memory += 1
                     if task.frm != -1:
-                        isend(inp_batch.grad, task.to)
+                        ret = inp_batch.grad
+                        ret = ret.to("cpu")
+                        isend(ret, task.to)
+
                         self.queue_out.put(Backward(task.tag, task.frm, task.to, inp_batch.grad.shape[0], inp_batch.grad.shape[1], inp_batch.grad.shape[2], task.originator),True)
                     
  
