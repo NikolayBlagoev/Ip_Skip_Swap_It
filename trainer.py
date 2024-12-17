@@ -27,8 +27,11 @@ if __name__ == '__main__':
 
     communication_distribution = argv[3]
     loop = asyncio.new_event_loop()
-    config = json.loads("communication.json")
+    with open("communication.json", 'r') as file:
+        config = json.load(file)
+    
     loc = id_to_loc(curr_id, communication_distribution)
+    print(loc)
     compute_time = get_computations(communication_distribution)[loc]
     world_size = 0
     own_stage = -1

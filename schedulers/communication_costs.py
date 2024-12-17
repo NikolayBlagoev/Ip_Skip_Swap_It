@@ -86,8 +86,9 @@ def get_locations(setting = "geo-distributed"):
     elif setting == "5-clusters":
         return ["Amsterdam", "Seoul", "Frankfurt", "Sydney", "Ohio"]
 def id_to_loc(idx, setting="geo-distributed"):
-    sz = len(get_locations(setting))
-    return idx % sz
+    locs = get_locations(setting)
+    idx = idx%len(locs)
+    return locs[idx]
 def get_computations(setting = "geo-distributed"):
     if setting == "geo-distributed":
         return COMPUTATIONAL_COST

@@ -1,9 +1,13 @@
 from torch.distributed import new_group
 from torch.distributed import init_process_group
-def initialise_communication(partitions, pid, addr):
-    os.environ["MASTER_ADDR"] = addr[0]
-    os.environ["MASTER_PORT"] = str(addr[1])
-    init_process_group(backend="gloo")
+import os
+def initialise_communication(partitions, pid, addr, world_size):
+    print(addr)
+    if addr == "127.0.0.1":
+        addr = "localhost"
+    os.environ["MASTER_ADDR"] = addr
+    os.environ["MASTER_PORT"] = "9010"
+    init_process_group(backend="gloo", rank=pid, world_size=world_size)
     return DP_Group(partitions,pid)
 
 class DP_Group(object):

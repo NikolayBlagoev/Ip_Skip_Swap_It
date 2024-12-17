@@ -53,7 +53,10 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
                     batch_size = 8, dmodel = 256, multiple_of = 4, num_heads = 16, memory = 3, process_time = 2,
                     device = "cuda"):
     manual_seed(0)
-    group = initialise_communication(partitions,node_id, main_addr)
+    world_size = 0
+    for v in partitions:
+        world_size += len(v)
+    group = initialise_communication(partitions,node_id, main_addr, world_size)
     
     if stage == 0:
         tkns = SPTokenizer()
