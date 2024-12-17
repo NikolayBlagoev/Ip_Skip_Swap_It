@@ -152,9 +152,10 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    isend(ret,task.to)
+                    # TODO: WHY IS THIS NOT SENDING?!?
+                    isend(ret,task.to) # immediate send (non-blocking)... Should hopefully asynchronously receive
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
-                    
+                    sleep(20) # We slip for 20 seconds and still other party does not receive
                     continue
                 elif isinstance(task, Loss):
                     x = zeros((task.B,task.T,task.C))
@@ -179,8 +180,8 @@ class SubP(object):
                     
                     loss.backward()
                     tm2 = time()
-                    if tm2 - tm1 < self.process_time:
-                        sleep(self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < 2*self.process_time:
+                        sleep(2*self.process_time - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
                     isend(ret.grad, task.frm)
@@ -193,6 +194,13 @@ class SubP(object):
                         x = zeros((task.B,task.T,task.C))
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"Forward from {task.frm}\n")
+                        # TODO: RECEIVE HERE NOT WORKING>!??!
+                        # Receive blocking...
+                        # Now that I am writing this I realise sending is non-blocking but receiving is... not the source of the problem
+                        # But it has significant performance implications...
+                        # I am not sure how this can be done non-blocking (Receiving I mean) in a coherent way
+                        # Maybe it is best to delegate all communication to the other process, not just synchronisation
+                        # and let DecCom deal with communications (it is about 10-15% slower than gloo, though)
                         irecv(x,task.frm).wait()
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"RECEIVED from {task.frm}\n")
@@ -234,8 +242,8 @@ class SubP(object):
                     
                     inp_batch.backward(output)
                     tm2 = time()
-                    if tm2 - tm1 < self.process_time:
-                        sleep(self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < 2*self.process_time:
+                        sleep(2*self.process_time - (tm2 - tm1))
                     self.memory += 1
                     if task.frm != -1:
                         ret = inp_batch.grad

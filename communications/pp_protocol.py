@@ -12,7 +12,9 @@ from .llm_subp import *
 from deccom.cryptofuncs.hash import SHA256
 
     
-
+'''
+Protocol for synchronisation between processes. Basically informs a process that it should receive from us a certain tensor :/
+'''
 class PPProtocl(AbstractProtocol):
     required_lower = AbstractProtocol.required_lower + \
         ["find_peer", "get_peer", "get_peers", "connected_callback","disconnected_callback"]
