@@ -74,7 +74,7 @@ class PPProtocl(AbstractProtocol):
         await super().start(p)
         
         with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-            log.write(f"===={self.peer.id_node} {self.peer.tcp} STARTING===\n")
+            log.write(f"===={self.peer.pub_key} {self.stage} STARTING===\n")
         
         loop = asyncio.get_event_loop() 
         self.queue_reader = loop.create_task(self.read_from_queue())
