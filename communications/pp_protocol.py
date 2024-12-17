@@ -67,7 +67,7 @@ class PPProtocl(AbstractProtocol):
             self.memory -= 1
             tag = int(self.dp_order*self.MB_SEND_COUNT + self.mb_send).to_bytes(4,byteorder="big")
             self.mb_send += 1
-            nxt = self.communication(bid,self.peer.pub_key)
+            nxt = self.communication(tag,self.peer.pub_key)
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
 
     async def start(self, p: Peer):
@@ -129,7 +129,7 @@ class PPProtocl(AbstractProtocol):
                             self.memory -= 1
                             tag = int(self.dp_order*self.MB_SEND_COUNT + self.mb_send).to_bytes(4,byteorder="big")
                             self.mb_send += 1
-                            nxt = self.communication(bid,self.peer.pub_key)
+                            nxt = self.communication(tag,self.peer.pub_key)
                             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
                         elif self.mb_send == self.MB_SEND_COUNT:
                             

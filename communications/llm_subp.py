@@ -61,7 +61,7 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
     if stage == 0:
         tkns = SPTokenizer()
         ts = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l)
-        vals = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l, split = "validation")
+        vals = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l, split = "train")
         net = LLamaFirstStage(tkns.vocab_size, dmodel, num_heads, n_layers, multiple_of = multiple_of, ctx_size= seq_l)
         
         optimizer = DP_optim(4e-3, net, group)
