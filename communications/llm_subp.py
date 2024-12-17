@@ -7,6 +7,7 @@ from simplellm.tokenizers import SPTokenizer
 from simplellm.llama import LLamaFirstStage, LLamaStage
 from .dp_group import DP_Group, initialise_communication
 from .dp_optimizer import DP_optim
+from contextlib import redirect_stdout
 from simplellm.dataloaders import Wikipedia_Dataset
 import torch.functional as F
 from time import time, sleep

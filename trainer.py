@@ -50,6 +50,8 @@ if __name__ == '__main__':
                     rank_order = idx2
                     break
         world_size += len(v)
+    if own_stage == 0 and rank_order >= len(partitions[1]):
+        exit()
     assert own_stage != -1
     def commfunc(bid, ndkey):
         if setting == "baseline":
