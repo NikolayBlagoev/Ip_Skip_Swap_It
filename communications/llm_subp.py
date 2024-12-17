@@ -79,7 +79,7 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
 
 class SubP(object):
     def __init__(self,queue_in: Queue, queue_out: Queue, net, optimizer, node_id = 0, stage = 0, ds = None, vals = None, 
-                    device = "cuda", mb_count = 12, process_time = 2) -> None:
+                    device = "cuda", mb_count = 12, process_time = 2, memory = 3) -> None:
         self.net = net
         self.process_time = process_time
         self.memory = memory

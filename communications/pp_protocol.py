@@ -80,7 +80,7 @@ class PPProtocl(AbstractProtocol):
                         continue
                     p = await self._lower_find_peer(SHA256(str(p)))
                                 
-                    self._lower_sendto(msg, p.addr)
+                    await self.send_datagram(msg, p.addr)
                 break
 
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
@@ -123,7 +123,7 @@ class PPProtocl(AbstractProtocol):
                     msg += task.C.to_bytes(2,byteorder="big")
                     sndto = str(task.to)
                     p = await self._lower_find_peer(SHA256(sndto))
-                    self._lower_sendto(msg, p.addr)
+                    await self.send_datagram(msg, p.addr)
                     continue
                 elif isinstance(task, Backward):
                     if self.stage != 0:
@@ -137,7 +137,7 @@ class PPProtocl(AbstractProtocol):
                         msg += task.C.to_bytes(2,byteorder="big")
                         sndto = str(task.to)
                         p = await self._lower_find_peer(SHA256(sndto))
-                        self._lower_sendto(msg, p.addr)
+                        await self.send_datagram(msg, p.addr)
                     else:
                         if self.mb_send < self.MB_SEND_COUNT:
                             self.mb_send += 1
@@ -158,7 +158,7 @@ class PPProtocl(AbstractProtocol):
                                     continue
                                 p = await self._lower_find_peer(SHA256(str(p)))
                                 
-                                self._lower_sendto(msg, p.addr)
+                                await self.send_datagram(msg, p.addr)
                             continue
                         else:
                             raise Exception("Too many microbatches have been sent?")
