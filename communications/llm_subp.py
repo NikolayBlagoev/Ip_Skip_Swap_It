@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from multiprocessing import Lock, Process, Queue, current_process
 from torch import manual_seed
-from torch.distributed import recv, isend
+from torch.distributed import recv, isend, irecv
 from torch import Tensor, zeros, save
 from simplellm.tokenizers import SPTokenizer
 from simplellm.llama import LLamaFirstStage, LLamaStage
@@ -189,7 +189,9 @@ class SubP(object):
                         x = zeros((task.B,task.T,task.C))
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"Forward from {task.frm}\n")
-                        recv(x,task.frm)
+                        irecv(x,task.frm).wait()
+                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                            log.write(f"RECEIVED from {task.frm}\n")
                         if self.memory == 0:
                             self.deferred[task.tag] = (x,task)
                             continue
