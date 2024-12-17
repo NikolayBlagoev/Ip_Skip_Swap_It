@@ -7,7 +7,7 @@ from simplellm.tokenizers import SPTokenizer
 from simplellm.llama import LLamaFirstStage, LLamaStage
 from .dp_group import DP_Group, initialise_communication
 from .dp_optimizer import DP_optim
-from torch import cuda
+from torch import cuda, no_grad
 import traceback
 from contextlib import redirect_stdout
 from simplellm.dataloaders import Wikipedia_Dataset
@@ -136,7 +136,7 @@ class SubP(object):
                         self.dl = iter(self.ds)
                         
                         x, y = next(self.dl)
-                    with torch.no_grad():
+                    with no_grad():
                         x = x.to(self.device)
                         
                     self.buffer_in[task.tag] = x
@@ -157,7 +157,7 @@ class SubP(object):
                 elif isinstance(task, Loss):
                     x = zeros((task.B,task.T,task.C))
                     recv(x,task.frm)
-                    with torch.no_grad():
+                    with no_grad():
                         x = x.to(self.device)
                     x.requires_grad = True
                     x.retain_grad()
@@ -197,7 +197,7 @@ class SubP(object):
                         task = self.deferred[task.tag][1]
                         del self.deferred[task.tag]
                     self.memory -= 1
-                    with torch.no_grad():
+                    with no_grad():
                         x = x.to(self.device)
                     x.requires_grad = True
                     x.retain_grad()
@@ -220,7 +220,7 @@ class SubP(object):
                     output = zeros((task.B,task.T,task.C))
                     recv(output,task.frm)
                     tm1 = time()
-                    with torch.no_grad():
+                    with no_grad():
                         output = output.to(self.device)
                     inp_batch = self.buffer_out[task.tag]
                     
