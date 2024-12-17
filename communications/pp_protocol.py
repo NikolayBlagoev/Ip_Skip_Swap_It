@@ -122,7 +122,10 @@ class PPProtocl(AbstractProtocol):
                     msg += task.T.to_bytes(2,byteorder="big")
                     msg += task.C.to_bytes(2,byteorder="big")
                     sndto = str(task.to)
+                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                        log.write(f"Will send to {sndto} mb {task.tag}\n")
                     p = await self._lower_find_peer(SHA256(sndto))
+
                     await self.send_datagram(msg, p.addr)
                     continue
                 elif isinstance(task, Backward):
@@ -194,6 +197,8 @@ class PPProtocl(AbstractProtocol):
             bid = int.from_bytes(data[1:5],byteorder="big")
             frm = int.from_bytes(data[5:7],byteorder="big")
             self.send_receives[bid] = frm
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"Will receive from {frm} mb {bid}\n")
             originator = int.from_bytes(data[7:9],byteorder="big")
             B = int.from_bytes(data[9:11],byteorder="big")
             T = int.from_bytes(data[11:13],byteorder="big")
