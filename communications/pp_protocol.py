@@ -114,7 +114,7 @@ class PPProtocl(AbstractProtocol):
                 if isinstance(task, Forward):
                     self.processed.append(task.tag)
                     msg = bytearray()
-                    msg += PPProtocl.BACK_FLAG.to_bytes(1,byteorder="big")
+                    msg += PPProtocl.FORWARD_FLAG.to_bytes(1,byteorder="big")
                     msg += task.tag.to_bytes(4,byteorder="big")
                     msg += int(self.peer.pub_key).to_bytes(2,byteorder="big")
                     msg += task.originator.to_bytes(2,byteorder="big")
@@ -125,7 +125,8 @@ class PPProtocl(AbstractProtocol):
                     with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                         log.write(f"Will send to {sndto} mb {task.tag}\n")
                     p = await self._lower_find_peer(SHA256(sndto))
-
+                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                        log.write(f"FOUND {sndto}\n")
                     await self.send_datagram(msg, p.addr)
                     continue
                 elif isinstance(task, Backward):
