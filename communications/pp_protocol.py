@@ -63,11 +63,26 @@ class PPProtocl(AbstractProtocol):
     async def start_iteration(self):
         await asyncio.sleep(1)
         self.mb_send = 0
+        
         for b in range(self.memory):
             self.memory -= 1
             tag = int(self.dp_order*self.MB_SEND_COUNT + self.mb_send).to_bytes(4,byteorder="big")
             self.mb_send += 1
             nxt = self.communication(tag,self.peer.pub_key)
+            if nxt == None:
+                self.send_receives.clear()
+                self.deferred.clear()
+                self.queue_out.put(Aggregate(0), True)
+                msg = bytearray()
+                msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
+                for p in range(self.world_size):
+                    if str(p) == self.peer.pub_key:
+                        continue
+                    p = await self._lower_find_peer(SHA256(str(p)))
+                                
+                    self._lower_sendto(msg, p.addr)
+                break
+
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
 
     async def start(self, p: Peer):

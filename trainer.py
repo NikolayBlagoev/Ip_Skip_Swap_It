@@ -56,6 +56,8 @@ if __name__ == '__main__':
         if setting == "baseline":
             if own_stage == len(partitions) - 1:
                 return None
+            if len(partitions[own_stage + 1]) <= rank_order:
+                return None
             return partitions[own_stage + 1][rank_order]
             
     while True:
@@ -88,9 +90,7 @@ if __name__ == '__main__':
 
         
         print("run...")
-        if own_stage == 0 and rank_order >= len(partitions[1]):
-            while True:
-                continue
+        
         loop.run_until_complete(me.listen())
         loop.run_forever()
         
