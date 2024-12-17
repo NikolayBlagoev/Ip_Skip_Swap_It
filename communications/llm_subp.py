@@ -152,8 +152,9 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
+                    isend(ret,task.to)
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
-                    isend(ret,task.to).wait()
+                    
                     continue
                 elif isinstance(task, Loss):
                     x = zeros((task.B,task.T,task.C))
@@ -217,7 +218,7 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    isend(x)
+                    isend(x,task.to)
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
                     continue
                     
