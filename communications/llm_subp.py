@@ -145,7 +145,7 @@ class SubP(object):
                     self.iteration += 1
                     self.target[task.tag] = y
                     tm1 = time()
-                    x = self.net.head(x)
+                    x = self.net.embed(x)
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
