@@ -13,7 +13,7 @@ from multiprocessing import Lock, Process, Queue, current_process
 import json
 from pprint import pprint
 from communications.pp_protocol import PPProtocl
-
+from schedulers.communication_costs import *
 seq_l = 64
 n_layers = 2
 batch_size = 3
@@ -24,8 +24,12 @@ multiple_of = 4
 if __name__ == '__main__':
     curr_id = int(argv[1])
     setting = argv[2]
+
+    communication_distribution = argv[3]
     loop = asyncio.new_event_loop()
     config = json.loads("communication.json")
+    loc = id_to_loc(curr_id, communication_distribution)
+    compute_time = get_computations(communication_distribution)[loc]
     world_size = 0
     own_stage = -1
     rank_order = 0
@@ -70,7 +74,7 @@ if __name__ == '__main__':
         queue_in = Queue(1024)
         queue_out = Queue(1024)
         
-        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,"cuda")) 
+        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,compute_time,"cuda")) 
         trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
         trainingp.set_lower(gossip)
         subprocess.start()
