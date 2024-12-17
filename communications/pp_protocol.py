@@ -66,7 +66,7 @@ class PPProtocl(AbstractProtocol):
         
         for b in range(self.memory):
             self.memory -= 1
-            tag = int(self.dp_order*self.MB_SEND_COUNT + self.mb_send).to_bytes(4,byteorder="big")
+            tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
             self.mb_send += 1
             nxt = self.communication(tag,self.peer.pub_key)
             if nxt == None:
