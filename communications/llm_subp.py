@@ -183,11 +183,12 @@ class SubP(object):
                     self.queue_out.put(Backward(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator), True)
                 
                 elif isinstance(task, Forward):
-                    with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"Forward")
+                    
                     if task.tag not in self.deferred:
                         
                         x = zeros((task.B,task.T,task.C))
+                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                            log.write(f"Forward from {task.frm}\n")
                         recv(x,task.frm)
                         if self.memory == 0:
                             self.deferred[task.tag] = (x,task)
