@@ -133,7 +133,7 @@ class SubP(object):
                     continue
                 if not self.started:
                     break
-                if taks == None:
+                if task == None:
                     task = self.queue_in.get(True)
                 if isinstance(task, Start):
                     
