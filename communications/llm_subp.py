@@ -168,7 +168,7 @@ class SubP(object):
                     ret = x.to("cpu")
                     
                     send = isend(ret,task.to)
-                    self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
+                    self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
                     
                     if self.iteration == 0:
                         send.wait() # First iteration we need to block :))
@@ -211,7 +211,7 @@ class SubP(object):
                     ret = x.grad
                     ret = ret.to("cpu")
                     send = isend(ret.grad, task.frm)
-                    self.queue_out.put(Backward(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator), True)
+                    self.queue_out.put(Backward(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, None), True)
                     if self.iteration == 0:
                         send.wait()
                 elif isinstance(task, Forward):
@@ -255,7 +255,7 @@ class SubP(object):
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     send = isend(x,task.to)
-                    self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
+                    self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
                     if self.iteration == 0:
                         send.wait()
                     continue
@@ -288,7 +288,7 @@ class SubP(object):
                         ret = ret.to("cpu")
                         isend(ret, task.to)
 
-                        self.queue_out.put(Backward(task.tag, task.frm, task.to, inp_batch.grad.shape[0], inp_batch.grad.shape[1], inp_batch.grad.shape[2], task.originator),True)
+                        self.queue_out.put(Backward(task.tag, task.frm, task.to, inp_batch.grad.shape[0], inp_batch.grad.shape[1], inp_batch.grad.shape[2], task.originator, None),True)
                     
  
                     del self.buffer_in[task.tag]
