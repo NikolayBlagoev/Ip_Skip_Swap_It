@@ -156,7 +156,7 @@ class SubP(object):
                     self.buffer_in[task.tag] = x
                     
                     
-                    self.iteration += 1
+                    
                     self.target[task.tag] = y
                     tm1 = time()
                     x = self.net.embed(x)
@@ -309,13 +309,14 @@ class SubP(object):
                     self.buffer_in.clear()
                     self.buffer_out.clear()
                     cuda.empty_cache()
-                    self.epoch += 1
+                    self.iteration += 1
+
                     # update params
                     self.optimizer.step() # this also syncs across stage
 
                     # save model
-                    if self.epoch % 500 == 0:
-                       save(self.net.state_dict(), f"{(self.epoch//500) % 5}_{self.node_id}.pth") 
+                    if self.iteration % 2000 == 0:
+                       save(self.net.state_dict(), f"{(self.epoch//2000) % 5}_{self.node_id}.pth") 
                     cuda.empty_cache()
                     self.queue_out.put(Aggregate(0), True)
         except Exception:
