@@ -171,7 +171,7 @@ class SubP(object):
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
                     
                     if self.iteration == 0:
-                        send(ret,task.to) # First iteration we need to block :))
+                        isend(ret,task.to).wait() # First iteration we need to block :))
                     else:
                         isend(ret,task.to)
                     
