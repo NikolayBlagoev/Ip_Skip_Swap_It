@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from multiprocessing import Lock, Process, Queue, current_process
 from torch import manual_seed
-from torch.distributed import recv, isend, irecv
+from torch.distributed import recv, isend, irecv, send
 from torch import Tensor, zeros, save
 from simplellm.tokenizers import SPTokenizer
 from simplellm.llama import LLamaFirstStage, LLamaStage
@@ -167,11 +167,13 @@ class SubP(object):
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     
-                    send = isend(ret,task.to)
+                    
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
                     
                     if self.iteration == 0:
-                        send.wait() # First iteration we need to block :))
+                        send(ret,task.to) # First iteration we need to block :))
+                    else:
+                        isend(ret,task.to)
                     
                     continue
                 elif isinstance(task, Loss):
