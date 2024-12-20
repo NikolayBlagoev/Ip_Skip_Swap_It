@@ -23,6 +23,7 @@ class Forward:
     T: int
     C: int
     originator: int
+    data: Tensor
 @dataclass
 class Backward:
     tag: int
@@ -32,13 +33,16 @@ class Backward:
     T: int
     C: int
     originator: int
+    data: Tensor
 
 @dataclass
 class Start:
     tag: int
     to: int
     originator: int
-
+@dataclass
+class Deferred:
+    tag: int
 @dataclass
 class Loss:
     tag: int
@@ -47,6 +51,9 @@ class Loss:
     T: int
     C: int
     originator: int
+    data: Tensor
+
+
 
 @dataclass
 class Aggregate:
@@ -94,7 +101,7 @@ class SubP(object):
         self.node_id = node_id
         self.buffer_in = {}
         self.buffer_out = {}
-        
+        self.receives = []
         self.iteration = 0
         
         self.started = True
@@ -115,12 +122,19 @@ class SubP(object):
     def start(self):
         try:
             while self.started:
-                while self.queue_in.empty() and self.started:
-                    
+                task = None
+                while self.queue_in.empty() and self.started and task == None:
+                    for idx,el in enumerate(self.receives):
+                        if el[1].done():
+                            task = el[0]
+                            self.receives.pop(idx)
+                            break
+
                     continue
                 if not self.started:
                     break
-                task = self.queue_in.get(True)
+                if taks == None:
+                    task = self.queue_in.get(True)
                 if isinstance(task, Start):
                     
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
@@ -152,14 +166,26 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    # TODO: WHY IS THIS NOT SENDING?!?
-                    isend(ret,task.to) # immediate send (non-blocking)... Should hopefully asynchronously receive
+                    
+                    send = isend(ret,task.to)
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
-                    sleep(20) # We slip for 20 seconds and still other party does not receive
+                    
+                    if self.iteration == 0:
+                        send.wait() # First iteration we need to block :))
+                    
                     continue
                 elif isinstance(task, Loss):
-                    x = zeros((task.B,task.T,task.C))
-                    recv(x,task.frm)
+                    if task.data == None:
+                        x = zeros((task.B,task.T,task.C))
+                        if self.iteration == 0:
+                            irecv(x,task.frm).wait()
+                            task.data = x
+                        else:
+                            task.data = x
+                            self.receives.append((task,irecv(x,task.frm)))
+                            continue
+                    
+                    x = task.data
                     with no_grad():
                         x = x.to(self.device)
                     x.requires_grad = True
@@ -184,33 +210,35 @@ class SubP(object):
                         sleep(2*self.process_time - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
-                    isend(ret.grad, task.frm)
+                    send = isend(ret.grad, task.frm)
                     self.queue_out.put(Backward(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator), True)
-                
+                    if self.iteration == 0:
+                        send.wait()
                 elif isinstance(task, Forward):
+                    #TODO: Need to receive asynchonously after 1st round
+                    if task.data == None:
+                        x = zeros((task.B,task.T,task.C))
+                        if self.iteration == 0:
+                            irecv(x,task.frm).wait()
+                            task.data = x
+                        else:
+                            task.data = x
+                            self.receives.append((task,irecv(x,task.frm)))
+                            continue
                     
                     if task.tag not in self.deferred:
                         
-                        x = zeros((task.B,task.T,task.C))
-                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                            log.write(f"Forward from {task.frm}\n")
-                        # TODO: RECEIVE HERE NOT WORKING>!??!
-                        # Receive blocking...
-                        # Now that I am writing this I realise sending is non-blocking but receiving is... not the source of the problem
-                        # But it has significant performance implications...
-                        # I am not sure how this can be done non-blocking (Receiving I mean) in a coherent way
-                        # Maybe it is best to delegate all communication to the other process, not just synchronisation
-                        # and let DecCom deal with communications (it is about 10-15% slower than gloo, though)
-                        irecv(x,task.frm).wait()
-                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                            log.write(f"RECEIVED from {task.frm}\n")
+                        
+                        
                         if self.memory == 0:
                             self.deferred[task.tag] = (x,task)
+                            self.queue_out.put(Deferred(task.tag), True)
                             continue
                     else:
-                        x = self.deferred[task.tag][0]
+                        
                         task = self.deferred[task.tag][1]
                         del self.deferred[task.tag]
+                    x = task.data
                     self.memory -= 1
                     with no_grad():
                         x = x.to(self.device)
@@ -226,15 +254,25 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    isend(x,task.to)
+                    send = isend(x,task.to)
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator), True)
+                    if self.iteration == 0:
+                        send.wait()
                     continue
                     
                 elif isinstance(task, Backward):
-                    
-                    
-                    output = zeros((task.B,task.T,task.C))
-                    recv(output,task.frm)
+                    #TODO: Need to receive asynch > first round
+                    if task.data == None:
+                        x = zeros((task.B,task.T,task.C))
+                        if self.iteration == 0:
+                            irecv(x,task.frm).wait()
+                            task.data = x
+                        else:
+                            task.data = x
+                            self.receives.append((task,irecv(x,task.frm)))
+                            continue
+                    output = task.data
+                    # irecv(output,task.frm)
                     tm1 = time()
                     with no_grad():
                         output = output.to(self.device)

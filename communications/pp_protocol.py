@@ -211,11 +211,15 @@ class PPProtocl(AbstractProtocol):
             else:
                 self.memory -= 1
             nxt = self.communication(bid,self.peer.pub_key)
-            if nxt == None:
+            if nxt == None and self.peer.pub_key != str(originator):
                 nxt = originator
+            elif nxt == None:
+                self.queue_out.put(Loss(bid, frm, 0, B, T, C, originator, None), True)
+                return
+
             
             
-            self.queue_out.put(Forward(bid, frm, nxt, B, T, C, originator), True)
+            self.queue_out.put(Forward(bid, frm, nxt, B, T, C, originator, None), True)
 
             return
         elif data[0] == PPProtocl.BACK_FLAG:
@@ -232,10 +236,10 @@ class PPProtocl(AbstractProtocol):
                 nxt = -1
             else:
                 del self.send_receives[bid]
-            self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator), True)
+            self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator, None), True)
             if len(self.deferred) > 0:
                 tg = self.deferred.pop()
-                self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0), True)
+                self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0, None), True)
                 self.memory -= 1
 
             return
