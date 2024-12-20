@@ -58,6 +58,8 @@ if __name__ == '__main__':
                 return None
             if len(partitions[own_stage + 1]) <= rank_order:
                 return None
+            with open(f"log_stats_proj_2_{curr_id}.txt", "a") as log:
+                log.write(f"Paritions {partitions[own_stage + 1]}, {rank_order}, {own_stage}\n")
             return partitions[own_stage + 1][rank_order]
             
     while True:
