@@ -226,9 +226,12 @@ class PPProtocl(AbstractProtocol):
 
             return
         elif data[0] == PPProtocl.BACK_FLAG:
+            
             bid = int.from_bytes(data[1:5],byteorder="big")
             frm = int.from_bytes(data[5:7],byteorder="big")
             originator = int.from_bytes(data[7:9],byteorder="big")
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"Will receive backward from {frm} mb {bid} originator {originator}\n")
             B = int.from_bytes(data[9:11],byteorder="big")
             T = int.from_bytes(data[11:13],byteorder="big")
             C = int.from_bytes(data[13:15],byteorder="big")

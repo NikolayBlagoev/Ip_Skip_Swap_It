@@ -280,7 +280,11 @@ class SubP(object):
                     if task.data == None:
                         x = zeros((task.B,task.T,task.C))
                         if self.iteration == 0:
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"TO RECEIVE BACKWARD FROM {task.frm}\n")
                             irecv(x,task.frm).wait()
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"RECEIVED FROM {task.frm}\n")
                             task.data = x
                         else:
                             task.data = x
