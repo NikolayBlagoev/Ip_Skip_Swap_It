@@ -67,6 +67,20 @@ class PPProtocl(AbstractProtocol):
         self.mb_send = 0
         
         for b in range(self.memory if self.iteration > 0 else 1):
+            if self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
+                            
+                            self.send_receives.clear()
+                            self.deferred.clear()
+                            self.queue_out.put(Aggregate(0), True)
+                            msg = bytearray()
+                            msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
+                            for p in range(self.world_size):
+                                if str(p) == self.peer.pub_key:
+                                    continue
+                                p = await self._lower_find_peer(SHA256(str(p)))
+                                
+                                await self.send_datagram(msg, p.addr)
+                            return
             self.memory -= 1
             tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
             self.mb_send += 1
@@ -84,6 +98,7 @@ class PPProtocl(AbstractProtocol):
                                 
                     await self.send_datagram(msg, p.addr)
                 break
+            
 
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
 
@@ -160,13 +175,13 @@ class PPProtocl(AbstractProtocol):
                         await self.send_datagram(msg, p.addr)
                     else:
                         if self.mb_send < self.MB_SEND_COUNT:
-                            self.mb_send += 1
+                            
                             self.memory -= 1
-                            tag = int(self.dp_order*self.MB_SEND_COUNT + self.mb_send).to_bytes(4,byteorder="big")
+                            tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
                             self.mb_send += 1
                             nxt = self.communication(tag,self.peer.pub_key)
                             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
-                        elif self.mb_send == self.MB_SEND_COUNT:
+                        elif self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
                             self.send_receives.clear()
                             self.deferred.clear()
