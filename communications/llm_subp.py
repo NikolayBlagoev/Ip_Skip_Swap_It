@@ -11,7 +11,7 @@ from torch import cuda, no_grad
 import traceback
 from contextlib import redirect_stdout
 from simplellm.dataloaders import Wikipedia_Dataset
-import torch.functional as F
+import torch.nn.functional as F
 from time import time, sleep
 # Messages Exchanged by the processes
 @dataclass
