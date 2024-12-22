@@ -262,7 +262,7 @@ class PPProtocl(AbstractProtocol):
                 tg = self.deferred.pop()
                 self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0, None), True)
                 self.memory -= 1
-
+            
             return
         elif data[0] == PPProtocl.AGGREGATE_FLAG:
             if self.stage == 0:

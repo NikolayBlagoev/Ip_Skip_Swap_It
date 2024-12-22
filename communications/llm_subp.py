@@ -222,8 +222,8 @@ class SubP(object):
                     ret = ret.to("cpu")
                     send = isend(ret, task.frm)
                     self.queue_out.put(Loss(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, None), True)
-                    # if self.iteration == 0:
-                    #     send.wait()
+                    if self.iteration == 0:
+                        send.wait()
                 elif isinstance(task, Forward):
                     #TODO: Need to receive asynchonously after 1st round
                     if task.data == None:
@@ -303,17 +303,21 @@ class SubP(object):
                     if tm2 - tm1 < 2*self.process_time:
                         sleep(2*self.process_time - (tm2 - tm1))
                     self.memory += 1
+                    send = None
                     if task.frm != -1:
                         ret = inp_batch.grad
                         ret = ret.to("cpu")
-                        isend(ret, task.to)
+                        send = isend(ret, task.to)
 
                         self.queue_out.put(Backward(task.tag, task.frm, task.to, inp_batch.grad.shape[0], inp_batch.grad.shape[1], inp_batch.grad.shape[2], task.originator, None),True)
-                    
+                        if self.iteration == 0:
+                            send.wait()
  
                     del self.buffer_in[task.tag]
                     del self.buffer_out[task.tag] 
                     cuda.empty_cache()
+                    
+
                     
                 
                 elif isinstance(task, Aggregate):
