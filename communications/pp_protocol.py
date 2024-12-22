@@ -70,17 +70,7 @@ class PPProtocl(AbstractProtocol):
         for b in range(self.memory):
             if self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
-                self.send_receives.clear()
-                self.deferred.clear()
-                self.queue_out.put(Aggregate(0), True)
-                msg = bytearray()
-                msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                for p in range(self.world_size):
-                                if str(p) == self.peer.pub_key:
-                                    continue
-                                p = await self._lower_find_peer(SHA256(str(p)))
-                                
-                                await self.send_datagram(msg, p.addr)
+                await self.announce_end()
                 return
             if self.mb_send == self.MB_SEND_COUNT:
                 break
@@ -90,18 +80,8 @@ class PPProtocl(AbstractProtocol):
             nxt = self.communication(tag,self.peer.pub_key)
             if nxt == None:
                 sleep(5)
-                self.send_receives.clear()
-                self.deferred.clear()
-                self.queue_out.put(Aggregate(0), True)
-                msg = bytearray()
-                msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                for p in range(self.world_size):
-                    if str(p) == self.peer.pub_key:
-                        continue
-                    p = await self._lower_find_peer(SHA256(str(p)))
-                                
-                    await self.send_datagram(msg, p.addr)
-                break
+                await self.announce_end()
+                return
             
 
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
@@ -119,7 +99,22 @@ class PPProtocl(AbstractProtocol):
             loop.create_task(self.start_iteration())
         
 
-    
+    async def announce_end(self):
+        self.mb_send = 0
+        self.memory = self.MAX_MEM
+        self.send_receives.clear()
+        self.deferred.clear()
+        self.queue_out.put(Aggregate(0), True)
+        msg = bytearray()
+        msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
+        for p in range(self.world_size):
+            if str(p) == self.peer.pub_key:
+                continue
+            p = await self._lower_find_peer(SHA256(str(p)))
+                                
+            await self.send_datagram(msg, p.addr)
+            
+
           
 
     async def read_from_queue(self):
