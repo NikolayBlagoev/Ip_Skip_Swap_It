@@ -13,6 +13,7 @@ from contextlib import redirect_stdout
 from simplellm.dataloaders import Wikipedia_Dataset
 import torch.nn.functional as F
 from time import time, sleep
+import pickle
 # Messages Exchanged by the processes
 @dataclass
 class Forward:
@@ -123,23 +124,17 @@ class SubP(object):
     def start(self):
         try:
             while self.started:
-                task = None
-                while self.queue_in.empty() and self.started and task == None:
-                    for idx,el in enumerate(self.receives):
-                        if el[1].is_completed():
-                            task = el[0]
-                            self.receives.pop(idx)
-                            break
-
+                
+                while self.queue_in.empty() and self.started:
                     continue
                 if not self.started:
                     break
-                if task == None:
-                    task = self.queue_in.get(True)
+                
+                task = self.queue_in.get(True)
                 if isinstance(task, Start):
                     
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"=======NEW ITERATION:========\n")
+                        log.write(f"=======NEW MB:========\n")
                     
                     try:
                         
@@ -169,33 +164,17 @@ class SubP(object):
                     ret = x.to("cpu")
                     self.memory -= 1
                     
-                    self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
+                    self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, pickle.dumps(ret)), True)
                     
-                    if self.iteration == 0:
-                        isend(ret,task.to).wait() # First iteration we need to block :))
-                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                            log.write(f"Finished sending to {task.to}\n")
-                    else:
-                        isend(ret,task.to)
+
                     
                     continue
                 elif isinstance(task, Loss):
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                         log.write(f"LOSSS\n")
-                    if task.data == None:
-                        x = zeros((task.B,task.T,task.C))
-                        if self.iteration == 0:
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"TO RECEIVE FROM {task.frm} AND COMPUTE LOSS\n")
-                            irecv(x,task.frm).wait()
-                            task.data = x
-                        else:
-
-                            task.data = x
-                            self.receives.append((task,irecv(x,task.frm)))
-                            continue
                     
-                    x = task.data
+                    
+                    x = pickle.loads(task.data)
                     with no_grad():
                         x = x.to(self.device)
                     x.requires_grad = True
@@ -216,43 +195,17 @@ class SubP(object):
                     
                     loss.backward()
                     tm2 = time()
-                    if tm2 - tm1 < 2*self.process_time:
-                        sleep(2*self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < 1.5*self.process_time:
+                        sleep(1.5*self.process_time - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
-                    send = isend(ret, task.frm)
-                    self.queue_out.put(Loss(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, None), True)
-                    if self.iteration == 0:
-                        send.wait()
-                elif isinstance(task, Forward):
-                    #TODO: Need to receive asynchonously after 1st round
-                    if task.data == None:
-                        x = zeros((task.B,task.T,task.C))
-                        if self.iteration == 0:
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"TO RECEIVE FROM {task.frm}\n")
-                            recv(x,task.frm)
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"RECEIVED FROM {task.frm}\n")
-                            task.data = x
-                        else:
-                            task.data = x
-                            self.receives.append((task,irecv(x,task.frm)))
-                            continue
                     
-                    if task.tag not in self.deferred:
-                        
-                        
-                        
-                        if self.memory == 0:
-                            self.deferred[task.tag] = (x,task)
-                            self.queue_out.put(Deferred(task.tag), True)
-                            continue
-                    else:
-                        
-                        task = self.deferred[task.tag][1]
-                        del self.deferred[task.tag]
-                    x = task.data
+                    self.queue_out.put(Loss(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, pickle.dumps(x)), True)
+                    
+                elif isinstance(task, Forward):
+                    
+                    
+                    x = pickle.loads(task.data)
                     self.memory -= 1
                     with no_grad():
                         x = x.to(self.device)
@@ -268,31 +221,16 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    send = isend(ret,task.to)
-                    self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
-                    if self.iteration == 0:
-                        send.wait()
-                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                            log.write(f"Finished sending to {task.to} {x.shape[0]} {x.shape[1]} {x.shape[2]}\n")
+                    
+                    self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, pickle.dumps(ret)), True)
+                    
                     continue
                     
                 elif isinstance(task, Backward):
-                    #TODO: Need to receive asynch > first round
-                    if task.data == None:
-                        x = zeros((task.B,task.T,task.C))
-                        if self.iteration == 0:
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"TO RECEIVE BACKWARD FROM {task.frm} {task.B} {task.T} {task.C}\n")
-                            irecv(x,task.frm).wait()
-                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"RECEIVED FROM {task.frm}\n")
-                            task.data = x
-                        else:
-                            task.data = x
-                            self.receives.append((task,irecv(x,task.frm)))
-                            continue
-                    output = task.data
-                    # irecv(output,task.frm)
+                    
+                    
+                    output = pickle.loads(task.data)
+                    
                     tm1 = time()
                     with no_grad():
                         output = output.to(self.device)
@@ -303,17 +241,16 @@ class SubP(object):
                     if tm2 - tm1 < 2*self.process_time:
                         sleep(2*self.process_time - (tm2 - tm1))
                     self.memory += 1
-                    send = None
+                    
                     if task.to != -1:
                         ret = inp_batch.grad
                         ret = ret.to("cpu")
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"SEND BACK {task.to} {ret.shape[0]} {ret.shape[1]} {ret.shape[2]}\n")
-                        send = isend(ret, task.to)
                         
-                        self.queue_out.put(Backward(task.tag, task.frm, task.to, ret.shape[0], ret.shape[1], ret.shape[2], task.originator, None),True)
-                        if self.iteration == 0:
-                            send.wait()
+                        
+                        self.queue_out.put(Backward(task.tag, task.frm, task.to, ret.shape[0], ret.shape[1], ret.shape[2], task.originator, pickle.dumps(ret)),True)
+                        
                     else:
                         self.queue_out.put(Backward(task.tag, task.frm, task.to, 0, 0, 0, task.originator, None),True)
 

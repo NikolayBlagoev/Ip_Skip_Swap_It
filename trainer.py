@@ -70,7 +70,8 @@ if __name__ == '__main__':
         protocol = DefaultProtocol()
         gossip = KademliaDiscovery([],interval=30, always_split = True)
         gossip.set_lower(protocol)
-        
+        stream = StreamProtocol(False)
+        stream.set_lower(gossip)
         n = Peer(("127.0.0.1", 10015))
         if curr_id != 0:
             gossip.bootstrap_peers.append(n)
@@ -84,10 +85,10 @@ if __name__ == '__main__':
         
         subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,compute_time,"cuda")) 
         trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
-        trainingp.set_lower(gossip)
+        trainingp.set_lower(stream)
         subprocess.start()
         
-        me = Node(my_peer , trainingp,ip_addr="127.0.0.1", port = 10015 if curr_id == 0 else port)
+        me = StreamNode(my_peer , trainingp,ip_addr="127.0.0.1", port = 10015 if curr_id == 0 else port)
         # print( "TCP", me.tcp_port)
 
         

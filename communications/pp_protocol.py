@@ -138,13 +138,14 @@ class PPProtocl(AbstractProtocol):
                     msg += task.B.to_bytes(2,byteorder="big")
                     msg += task.T.to_bytes(2,byteorder="big")
                     msg += task.C.to_bytes(2,byteorder="big")
+                    msg += task.data
                     sndto = str(task.to)
                     with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                         log.write(f"Will send to {sndto} mb {task.tag}\n")
                     p = await self._lower_find_peer(SHA256(sndto))
                     with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                         log.write(f"FOUND {sndto}\n")
-                    await self.send_datagram(msg, p.addr)
+                    await self.send_stream(p.id_node,msg)
                     continue
                 elif isinstance(task, Loss):
                     with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
@@ -157,9 +158,10 @@ class PPProtocl(AbstractProtocol):
                     msg += task.B.to_bytes(2,byteorder="big")
                     msg += task.T.to_bytes(2,byteorder="big")
                     msg += task.C.to_bytes(2,byteorder="big")
+                    msg += task.data
                     sndto = str(task.to)
                     p = await self._lower_find_peer(SHA256(sndto))
-                    await self.send_datagram(msg, p.addr)
+                    await self.send_stream(p.id_node,msg)
                 elif isinstance(task, Backward):
                     if self.stage != 0:
                         msg = bytearray()
@@ -170,9 +172,10 @@ class PPProtocl(AbstractProtocol):
                         msg += task.B.to_bytes(2,byteorder="big")
                         msg += task.T.to_bytes(2,byteorder="big")
                         msg += task.C.to_bytes(2,byteorder="big")
+                        msg += task.data
                         sndto = str(task.to)
                         p = await self._lower_find_peer(SHA256(sndto))
-                        await self.send_datagram(msg, p.addr)
+                        await self.send_stream(p.id_node,msg)
                     else:
                         if self.mb_send < self.MB_SEND_COUNT:
                             
@@ -226,61 +229,8 @@ class PPProtocl(AbstractProtocol):
  
     def process_datagram(self, addr: tuple[str, int], data: bytes):
         
-        if data[0] == PPProtocl.FORWARD_FLAG:
-            bid = int.from_bytes(data[1:5],byteorder="big")
-            frm = int.from_bytes(data[5:7],byteorder="big")
-            self.send_receives[bid] = frm
-            
-            originator = int.from_bytes(data[7:9],byteorder="big")
-            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                log.write(f"Will receive from {frm} mb {bid} originator {originator}\n")
-            B = int.from_bytes(data[9:11],byteorder="big")
-            T = int.from_bytes(data[11:13],byteorder="big")
-            C = int.from_bytes(data[13:15],byteorder="big")
-            if self.memory == 0 and self.peer.pub_key != str(originator):
-                self.deferred.append(bid)
-            elif self.peer.pub_key != str(originator):
-                self.memory -= 1
-            nxt = self.communication(bid,self.peer.pub_key)
-            if nxt == None and self.peer.pub_key != str(originator):
-                nxt = originator
-            elif self.peer.pub_key == str(originator):
-                with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                    log.write(f"NEED TO COMPUTE LOSS FROM {frm} mb {bid}\n")
-                self.queue_out.put(Loss(bid, frm, frm, B, T, C, originator, None), True)
-                return
-
-            
-            
-            self.queue_out.put(Forward(bid, frm, nxt, B, T, C, originator, None), True)
-
-            return
-        elif data[0] == PPProtocl.BACK_FLAG:
-            
-            bid = int.from_bytes(data[1:5],byteorder="big")
-            frm = int.from_bytes(data[5:7],byteorder="big")
-            originator = int.from_bytes(data[7:9],byteorder="big")
-            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                log.write(f"Will receive backward from {frm} mb {bid} originator {originator} {self.send_receives}\n")
-            B = int.from_bytes(data[9:11],byteorder="big")
-            T = int.from_bytes(data[11:13],byteorder="big")
-            C = int.from_bytes(data[13:15],byteorder="big")
-            self.memory += 1
-            nxt = self.send_receives.get(bid)
-
-            if str(originator) == self.peer.pub_key:
-                nxt = -1
-                del self.send_receives[bid]
-            else:
-                del self.send_receives[bid]
-            self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator, None), True)
-            if len(self.deferred) > 0:
-                tg = self.deferred.pop()
-                self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0, None), True)
-                self.memory -= 1
-
-            return
-        elif data[0] == PPProtocl.AGGREGATE_FLAG:
+        
+        if data[0] == PPProtocl.AGGREGATE_FLAG:
             if self.stage == 0:
                 return
             self.received_aggregates += 1
@@ -311,4 +261,88 @@ class PPProtocl(AbstractProtocol):
         
         self.queue_in.close()
         self.queue_out.close()
+
+    @bindfrom("stream_callback")
+    def process_data(self, data:bytes, nodeid, addr):
+        if data[0] == PPProtocl.FORWARD_FLAG:
+            bid = int.from_bytes(data[1:5],byteorder="big")
+            frm = int.from_bytes(data[5:7],byteorder="big")
+            self.send_receives[bid] = frm
+            
+            originator = int.from_bytes(data[7:9],byteorder="big")
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"Will receive from {frm} mb {bid} originator {originator}\n")
+            B = int.from_bytes(data[9:11],byteorder="big")
+            T = int.from_bytes(data[11:13],byteorder="big")
+            C = int.from_bytes(data[13:15],byteorder="big")
+            if self.memory == 0 and self.peer.pub_key != str(originator):
+                self.deferred.append((data,nodeid,addr))
+                return
+            elif self.peer.pub_key != str(originator):
+                self.memory -= 1
+            nxt = self.communication(bid,self.peer.pub_key)
+            if nxt == None and self.peer.pub_key != str(originator):
+                nxt = originator
+            elif self.peer.pub_key == str(originator):
+                with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                    log.write(f"NEED TO COMPUTE LOSS FROM {frm} mb {bid}\n")
+                self.queue_out.put(Loss(bid, frm, frm, B, T, C, originator, data[15:]), True)
+                return
+
+            
+            
+            self.queue_out.put(Forward(bid, frm, nxt, B, T, C, originator, data[15:]), True)
+
+            return
+        elif data[0] == PPProtocl.BACK_FLAG:
+            
+            bid = int.from_bytes(data[1:5],byteorder="big")
+            frm = int.from_bytes(data[5:7],byteorder="big")
+            originator = int.from_bytes(data[7:9],byteorder="big")
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"Will receive backward from {frm} mb {bid} originator {originator} {self.send_receives}\n")
+           
+            self.memory += 1
+            nxt = self.send_receives.get(bid)
+
+            if str(originator) == self.peer.pub_key:
+                nxt = -1
+                del self.send_receives[bid]
+            else:
+                del self.send_receives[bid]
+            self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator, data[9:]), True)
+            if len(self.deferred) > 0:
+                tg = self.deferred.pop()
+                return self.process_data(tg[0],tg[1],tg[2])
+
+        
+       
+    async def send_stream(self, node_id, data):
+        
+        await self._lower_find_peer(bytes(node_id))
+        p = self._lower_get_peer(node_id)
+        await self._lower_open_connection(p.addr[0], p.tcp, p.id_node, port_listen = 0)
+        
+        await self._lower_send_stream(node_id, data)
+        return
+    
+    @bindto("open_connection")
+    async def _lower_open_connection(self, remote_ip, remote_port, node_id: bytes):
+        return
+    @bindto("send_stream")
+    async def _lower_send_stream(self, node_id, data):
+        return
                 
+    def get_lowest_stream(self):
+        submodule = self.submodule
+        while submodule != None and not hasattr(submodule, "get_lowest_stream") and hasattr(submodule, "submodule") :
+            submodule = submodule.submodule
+        if submodule != None and hasattr(submodule, "get_lowest_stream"):
+            ret = submodule.get_lowest_stream()
+            if ret == None:
+                return self
+            else:
+                return ret
+        else:
+            
+            return self
