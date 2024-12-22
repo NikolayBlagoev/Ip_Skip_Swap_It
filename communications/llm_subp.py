@@ -307,9 +307,10 @@ class SubP(object):
                     if task.frm != -1:
                         ret = inp_batch.grad
                         ret = ret.to("cpu")
-                        send = isend(ret, task.to)
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"SEND BACK {task.to} {ret.shape[0]} {ret.shape[1]} {ret.shape[2]}\n")
+                        send = isend(ret, task.to)
+                        
                         self.queue_out.put(Backward(task.tag, task.frm, task.to, ret.shape[0], ret.shape[1], ret.shape[2], task.originator, None),True)
                         if self.iteration == 0:
                             send.wait()
