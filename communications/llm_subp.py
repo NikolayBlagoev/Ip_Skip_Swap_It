@@ -304,7 +304,7 @@ class SubP(object):
                         sleep(2*self.process_time - (tm2 - tm1))
                     self.memory += 1
                     send = None
-                    if task.frm != -1:
+                    if task.to != -1:
                         ret = inp_batch.grad
                         ret = ret.to("cpu")
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
@@ -314,7 +314,9 @@ class SubP(object):
                         self.queue_out.put(Backward(task.tag, task.frm, task.to, ret.shape[0], ret.shape[1], ret.shape[2], task.originator, None),True)
                         if self.iteration == 0:
                             send.wait()
- 
+                    else:
+                        self.queue_out.put(Backward(task.tag, task.frm, task.to, 0, 0, 0, task.originator, None),True)
+
                     del self.buffer_in[task.tag]
                     del self.buffer_out[task.tag] 
                     cuda.empty_cache()

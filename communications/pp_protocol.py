@@ -253,8 +253,9 @@ class PPProtocl(AbstractProtocol):
             self.memory += 1
             nxt = self.send_receives.get(bid)
 
-            if nxt == None:
+            if str(originator) == self.peer.pub_key:
                 nxt = -1
+                del self.send_receives[bid]
             else:
                 del self.send_receives[bid]
             self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator, None), True)
