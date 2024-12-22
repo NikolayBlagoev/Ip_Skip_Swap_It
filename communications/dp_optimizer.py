@@ -1,6 +1,6 @@
 from torch import Tensor
 from torch.nn.utils import clip_grad_norm_
-from torch import no_grad
+from torch import no_grad, cat
 from torch.distributed import barrier, all_reduce, ReduceOp
 class DP_optim(object):
     def __init__(self, lr, model, dp_group):
@@ -31,7 +31,7 @@ class DP_optim(object):
         barrier(self.dp_group)
         all_reduce(prev_grad, op = ReduceOp.AVG, group=self.dp_group)
         # TODO CLIP IT TO 1.0!!!
-        tmp = split(tmp, self.len_sizes)
+        tmp = split(prev_grad, self.len_sizes)
         with no_grad():
             for i, param in enumerate(self.net.parameters()):
                 param = param - self.lr*tmp[i].view(self.sizes[i]).to(self.net.device)
