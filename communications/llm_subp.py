@@ -280,7 +280,7 @@ class SubP(object):
                     cuda.empty_cache()
                     self.queue_out.put(Aggregate(0), True)
         except Exception:
-            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+            with open(f"ERROR_LOG_{self.node_id}.txt", "a") as log:
                 log.write(f"{traceback.format_exc()}\n")
             
             exit()
