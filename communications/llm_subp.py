@@ -273,7 +273,8 @@ class SubP(object):
 
                     # update params
                     self.optimizer.step() # this also syncs across stage
-
+                    with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                        log.write(f"FINISHED AGGREGATING NOW IN {self.iteration}\n")
                     # save model
                     if self.iteration % 2000 == 0:
                        save(self.net.state_dict(), f"{(self.epoch//2000) % 5}_{self.node_id}.pth") 

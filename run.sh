@@ -7,7 +7,7 @@ do
     touch "log$i.txt"
     touch "ERROR_LOG_$i.txt"
     touch "out$i.txt"
-    (sleep 1; python "trainer.py" $i "baseline" "geo-distributed" >"out$i.txt") &
+    (sleep 1; python -u "trainer.py" $i "baseline" "geo-distributed" >"out$i.txt") &
 
 
 done
