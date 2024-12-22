@@ -14,9 +14,11 @@ class DP_Group(object):
     def __init__(self, partitions, pid):
         self.group = None
         self.pid = pid
+        self.g_size = 0
         for p in partitions:
             if pid in p:
                 self.group = new_group(p, backend="gloo")
+                self.g_size = len(p)
             else:
                 new_group(p, backend="gloo")
     
