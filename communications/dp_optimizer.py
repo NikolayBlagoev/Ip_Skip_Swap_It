@@ -7,11 +7,11 @@ class DP_optim(object):
         super().__init__()
         self.dp_group = dp_group
         self.iteration = 0
-        self.model = model
+        self.net = model
         self.sizes = []
         self.lr = lr
         self.len_sizes = []
-        for param in self.model.parameters():
+        for param in self.net.parameters():
             self.sizes.append(param.shape)
             self.len_sizes.append(len(param.view(-1)))
         
