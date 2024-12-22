@@ -262,13 +262,17 @@ class PPProtocl(AbstractProtocol):
                 tg = self.deferred.pop()
                 self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0, None), True)
                 self.memory -= 1
-            
+
             return
         elif data[0] == PPProtocl.AGGREGATE_FLAG:
             if self.stage == 0:
                 return
             self.received_aggregates += 1
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"AGGREGATE RECEIVED\n")
             if self.received_aggregates >= self.datanodes:
+                with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                    log.write(f"AGGREGATING\n")
                 self.received_aggregates = 0
                 self.processed.clear()
                 self.send_receives.clear()
