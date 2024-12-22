@@ -217,7 +217,7 @@ class PPProtocl(AbstractProtocol):
             elif self.peer.pub_key == str(originator):
                 with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                     log.write(f"NEED TO COMPUTE LOSS FROM {frm} mb {bid}\n")
-                self.queue_out.put(Loss(bid, frm, B, T, C, originator, None), True)
+                self.queue_out.put(Loss(bid, frm, frm, B, T, C, originator, None), True)
                 return
 
             

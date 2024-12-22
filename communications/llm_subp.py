@@ -47,6 +47,7 @@ class Deferred:
 class Loss:
     tag: int
     frm: int
+    to: int
     B: int
     T: int
     C: int
