@@ -66,7 +66,7 @@ class PPProtocl(AbstractProtocol):
         await asyncio.sleep(1)
         self.mb_send = 0
         
-        for b in range(self.memory):
+        for b in range(self.memory if self.iteration > 0 else 1):
             self.memory -= 1
             tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
             self.mb_send += 1
@@ -186,6 +186,7 @@ class PPProtocl(AbstractProtocol):
 
                     continue
                 elif isinstance(task, Aggregate):
+                    self.iteration += 1
                     if self.stage != 0:
                         continue
                     self.mb_send = 0
