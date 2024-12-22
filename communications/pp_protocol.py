@@ -213,7 +213,7 @@ class PPProtocl(AbstractProtocol):
             nxt = self.communication(bid,self.peer.pub_key)
             if nxt == None and self.peer.pub_key != str(originator):
                 nxt = originator
-            elif nxt == None:
+            elif self.peer.pub_key == str(originator):
                 self.queue_out.put(Loss(bid, frm, 0, B, T, C, originator, None), True)
                 return
 

@@ -180,9 +180,12 @@ class SubP(object):
                     if task.data == None:
                         x = zeros((task.B,task.T,task.C))
                         if self.iteration == 0:
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"TO RECEIVE FROM {task.frm} AND COMPUTE LOSS\n")
                             irecv(x,task.frm).wait()
                             task.data = x
                         else:
+
                             task.data = x
                             self.receives.append((task,irecv(x,task.frm)))
                             continue
