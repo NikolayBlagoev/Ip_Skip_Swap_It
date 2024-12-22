@@ -131,6 +131,20 @@ class PPProtocl(AbstractProtocol):
                         log.write(f"FOUND {sndto}\n")
                     await self.send_datagram(msg, p.addr)
                     continue
+                elif isinstance(task, Loss):
+                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                        log.write(f"Sending loss grad to {task.to}\n")
+                    msg = bytearray()
+                    msg += PPProtocl.BACK_FLAG.to_bytes(1,byteorder="big")
+                    msg += task.tag.to_bytes(4,byteorder="big")
+                    msg += int(self.peer.pub_key).to_bytes(2,byteorder="big")
+                    msg += task.originator.to_bytes(2,byteorder="big")
+                    msg += task.B.to_bytes(2,byteorder="big")
+                    msg += task.T.to_bytes(2,byteorder="big")
+                    msg += task.C.to_bytes(2,byteorder="big")
+                    sndto = str(task.to)
+                    p = await self._lower_find_peer(SHA256(sndto))
+                    await self.send_datagram(msg, p.addr)
                 elif isinstance(task, Backward):
                     if self.stage != 0:
                         msg = bytearray()
