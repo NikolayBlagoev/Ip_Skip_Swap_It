@@ -28,8 +28,8 @@ class DP_optim(object):
             tmp.append(param.grad.view(-1))
         prev_grad = cat(tmp).to("cpu")
 
-        barrier(self.dp_group)
-        all_reduce(prev_grad, op = ReduceOp.AVG, group=self.dp_group)
+        barrier(self.dp_group.group)
+        all_reduce(prev_grad, op = ReduceOp.AVG, group=self.dp_group.group)
         # TODO CLIP IT TO 1.0!!!
         tmp = split(prev_grad, self.len_sizes)
         with no_grad():
