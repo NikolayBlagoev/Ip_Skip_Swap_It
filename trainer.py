@@ -39,8 +39,8 @@ if __name__ == '__main__':
     partitions = config["partitions"]
     memory = config["memory"]
     send_mbs = 2
-    # if setting == "baseline":
-        # send_mbs = config["baseline-mb-count"]
+    if setting == "baseline":
+        send_mbs = config["baseline-mb-count"]
     for idx, v in enumerate(partitions):
         if curr_id in v:
             assert own_stage == -1
