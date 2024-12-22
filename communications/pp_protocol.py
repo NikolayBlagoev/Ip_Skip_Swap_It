@@ -74,14 +74,17 @@ class PPProtocl(AbstractProtocol):
                 return
             if self.mb_send == self.MB_SEND_COUNT:
                 break
-            self.memory -= 1
+            
             tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
-            self.mb_send += 1
+            
             nxt = self.communication(tag,self.peer.pub_key)
             if nxt == None:
+                
                 sleep(1)
                 await self.announce_end()
                 return
+            self.memory -= 1
+            self.mb_send += 1
             
 
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
@@ -139,8 +142,8 @@ class PPProtocl(AbstractProtocol):
                     msg += task.C.to_bytes(2,byteorder="big")
                     msg += task.data
                     sndto = str(task.to)
-                    # with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                    #     log.write(f"Will send to {sndto} mb {task.tag}\n")
+                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                        log.write(f"Will send to {sndto} mb {task.tag}\n")
                     p = await self._lower_find_peer(SHA256(sndto))
                     # with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                     #     log.write(f"FOUND {sndto}\n")
