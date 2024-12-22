@@ -282,7 +282,7 @@ class SubP(object):
                         x = zeros((task.B,task.T,task.C))
                         if self.iteration == 0:
                             with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"TO RECEIVE BACKWARD FROM {task.frm}\n")
+                                log.write(f"TO RECEIVE BACKWARD FROM {task.frm} {task.B} {task.T} {task.C}\n")
                             irecv(x,task.frm).wait()
                             with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                                 log.write(f"RECEIVED FROM {task.frm}\n")
@@ -308,8 +308,9 @@ class SubP(object):
                         ret = inp_batch.grad
                         ret = ret.to("cpu")
                         send = isend(ret, task.to)
-
-                        self.queue_out.put(Backward(task.tag, task.frm, task.to, inp_batch.grad.shape[0], inp_batch.grad.shape[1], inp_batch.grad.shape[2], task.originator, None),True)
+                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                            log.write(f"SEND BACK {task.to} {ret.shape[0]} {ret.shape[1]} {ret.shape[2]}\n")
+                        self.queue_out.put(Backward(task.tag, task.frm, task.to, ret.shape[0], ret.shape[1], ret.shape[2], task.originator, None),True)
                         if self.iteration == 0:
                             send.wait()
  
