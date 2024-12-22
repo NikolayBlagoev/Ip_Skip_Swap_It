@@ -66,21 +66,23 @@ class PPProtocl(AbstractProtocol):
         await asyncio.sleep(1)
         self.mb_send = 0
         
-        for b in range(self.memory if self.iteration > 0 else 1):
+        for b in range(self.memory):
             if self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
-                            self.send_receives.clear()
-                            self.deferred.clear()
-                            self.queue_out.put(Aggregate(0), True)
-                            msg = bytearray()
-                            msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                            for p in range(self.world_size):
+                self.send_receives.clear()
+                self.deferred.clear()
+                self.queue_out.put(Aggregate(0), True)
+                msg = bytearray()
+                msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
+                for p in range(self.world_size):
                                 if str(p) == self.peer.pub_key:
                                     continue
                                 p = await self._lower_find_peer(SHA256(str(p)))
                                 
                                 await self.send_datagram(msg, p.addr)
-                            return
+                return
+            if self.mb_send == self.MB_SEND_COUNT:
+                break
             self.memory -= 1
             tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
             self.mb_send += 1
