@@ -165,6 +165,7 @@ class PPProtocl(AbstractProtocol):
                     p = await self._lower_find_peer(SHA256(sndto))
                     await self.send_stream(p.id_node,msg)
                 elif isinstance(task, Backward):
+                    self.memory += 1
                     if self.stage != 0:
                         msg = bytearray()
                         msg += PPProtocl.BACK_FLAG.to_bytes(1,byteorder="big")
@@ -178,6 +179,12 @@ class PPProtocl(AbstractProtocol):
                         sndto = str(task.to)
                         p = await self._lower_find_peer(SHA256(sndto))
                         await self.send_stream(p.id_node,msg)
+                        
+                        if len(self.deferred) > 0:
+                            loop = asyncio.get_event_loop()
+                            tg = self.deferred.pop()
+                            loop.call_later(0.1,self.process_data, tg[0],tg[1],tg[2])
+                            # return
                     else:
                         with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                             log.write(f"CAN WE START BACK {self.memory} {self.mb_send} {self.MB_SEND_COUNT} {self.MAX_MEM}\n")
@@ -299,7 +306,7 @@ class PPProtocl(AbstractProtocol):
             with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
                 log.write(f"Will receive backward from {frm} mb {bid} originator {originator} {self.send_receives}\n")
            
-            self.memory += 1
+            
             nxt = self.send_receives.get(bid)
 
             if str(originator) == self.peer.pub_key:
@@ -308,9 +315,7 @@ class PPProtocl(AbstractProtocol):
             else:
                 del self.send_receives[bid]
             self.queue_out.put(Backward(bid, frm, nxt, 0, 0, 0, originator, data[15:]), True)
-            if len(self.deferred) > 0:
-                tg = self.deferred.pop()
-                return self.process_data(tg[0],tg[1],tg[2])
+            
 
         
        
