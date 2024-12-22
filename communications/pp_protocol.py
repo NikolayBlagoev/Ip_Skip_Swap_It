@@ -253,7 +253,7 @@ class PPProtocl(AbstractProtocol):
             self.memory += 1
             nxt = self.send_receives.get(bid)
 
-            if not nxt:
+            if nxt == None:
                 nxt = -1
             else:
                 del self.send_receives[bid]
