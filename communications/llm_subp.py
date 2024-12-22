@@ -172,11 +172,15 @@ class SubP(object):
                     
                     if self.iteration == 0:
                         isend(ret,task.to).wait() # First iteration we need to block :))
+                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                            log.write(f"Finished sending to {task.to}\n")
                     else:
                         isend(ret,task.to)
                     
                     continue
                 elif isinstance(task, Loss):
+                    with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                        log.write(f"LOSSS\n")
                     if task.data == None:
                         x = zeros((task.B,task.T,task.C))
                         if self.iteration == 0:
