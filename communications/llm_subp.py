@@ -103,7 +103,7 @@ class SubP(object):
         self.buffer_out = {}
         self.receives = []
         self.iteration = 0
-        
+        self.mb_count = mb_count
         self.started = True
         self.deferred = {}
         
