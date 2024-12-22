@@ -3,12 +3,13 @@ from torch.nn.utils import clip_grad_norm_
 from torch import no_grad, cat, zeros_like, split
 from torch.distributed import barrier, all_reduce, ReduceOp
 class DP_optim(object):
-    def __init__(self, lr, model, dp_group):
+    def __init__(self, lr, model, dp_group, device):
         super().__init__()
         self.dp_group = dp_group
         self.iteration = 0
         self.net = model
         self.sizes = []
+        self.device = device
         self.lr = lr
         self.len_sizes = []
         for param in self.net.parameters():
@@ -34,7 +35,7 @@ class DP_optim(object):
         tmp = split(prev_grad, self.len_sizes)
         with no_grad():
             for i, param in enumerate(self.net.parameters()):
-                param = param - self.lr*tmp[i].view(self.sizes[i]).to(self.net.device)/self.dp_group.g_size
+                param = param - self.lr*tmp[i].view(self.sizes[i]).to(self.device)/self.dp_group.g_size
                 param.grad = None
         self.iteration += 1
         
