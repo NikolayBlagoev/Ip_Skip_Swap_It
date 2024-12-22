@@ -260,10 +260,12 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    send = isend(x,task.to)
+                    send = isend(ret,task.to)
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
                     if self.iteration == 0:
                         send.wait()
+                        with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                            log.write(f"Finished sending to {task.to} {x.shape[0]} {x.shape[1]} {x.shape[2]}\n")
                     continue
                     
                 elif isinstance(task, Backward):
