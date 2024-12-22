@@ -179,6 +179,8 @@ class PPProtocl(AbstractProtocol):
                         p = await self._lower_find_peer(SHA256(sndto))
                         await self.send_stream(p.id_node,msg)
                     else:
+                        with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                            log.write(f"CAN WE START BACK {self.memory} {self.mb_send} {self.MB_SEND_COUNT} {self.MAX_MEM}\n")
                         if self.mb_send < self.MB_SEND_COUNT:
                             
                             self.memory -= 1
