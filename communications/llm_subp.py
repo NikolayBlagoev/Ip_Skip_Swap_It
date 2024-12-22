@@ -229,7 +229,7 @@ class SubP(object):
                 elif isinstance(task, Backward):
                     
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"Processing back to {task.to} {ret.shape[0]} {ret.shape[1]} {ret.shape[2]}\n")
+                        log.write(f"Processing back to {task.to}\n")
                     output = pickle.loads(task.data)
                     
                     tm1 = time()

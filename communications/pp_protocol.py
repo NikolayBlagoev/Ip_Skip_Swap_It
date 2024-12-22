@@ -310,7 +310,7 @@ class PPProtocl(AbstractProtocol):
                 del self.send_receives[bid]
             else:
                 del self.send_receives[bid]
-            self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator, data[9:]), True)
+            self.queue_out.put(Backward(bid, frm, nxt, 0, 0, 0, originator, data[15:]), True)
             if len(self.deferred) > 0:
                 tg = self.deferred.pop()
                 return self.process_data(tg[0],tg[1],tg[2])
