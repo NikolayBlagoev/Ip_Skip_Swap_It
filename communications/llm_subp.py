@@ -167,7 +167,7 @@ class SubP(object):
                     if tm2 - tm1 < self.process_time:
                         sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
-                    
+                    self.memory -= 1
                     
                     self.queue_out.put(Forward(task.tag, self.node_id, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
                     
