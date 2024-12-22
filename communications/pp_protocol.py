@@ -9,6 +9,7 @@ from datetime import datetime
 import asyncio
 from traceback import print_exception, format_exc
 from .llm_subp import *
+from time import sleep
 from deccom.cryptofuncs.hash import SHA256
 
     
@@ -88,6 +89,7 @@ class PPProtocl(AbstractProtocol):
             self.mb_send += 1
             nxt = self.communication(tag,self.peer.pub_key)
             if nxt == None:
+                sleep(5)
                 self.send_receives.clear()
                 self.deferred.clear()
                 self.queue_out.put(Aggregate(0), True)
@@ -200,8 +202,8 @@ class PPProtocl(AbstractProtocol):
                                 
                                 await self.send_datagram(msg, p.addr)
                             continue
-                        else:
-                            raise Exception("Too many microbatches have been sent?")
+                        elif self.mb_send == self.MB_SEND_COUNT:
+                            raise Exception(f"Too many microbatches have been sent? {self.memory} {self.MAX_MEM} {self.mb_send} {self.MB_SEND_COUNT}")
                         continue
 
                     continue
