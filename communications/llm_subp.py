@@ -219,7 +219,7 @@ class SubP(object):
                         sleep(2*self.process_time - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
-                    send = isend(ret.grad, task.frm)
+                    send = isend(ret, task.frm)
                     self.queue_out.put(Backward(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, None), True)
                     if self.iteration == 0:
                         send.wait()
