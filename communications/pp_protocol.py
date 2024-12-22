@@ -79,7 +79,7 @@ class PPProtocl(AbstractProtocol):
             self.mb_send += 1
             nxt = self.communication(tag,self.peer.pub_key)
             if nxt == None:
-                sleep(5)
+                sleep(1)
                 await self.announce_end()
                 return
             
@@ -139,16 +139,16 @@ class PPProtocl(AbstractProtocol):
                     msg += task.C.to_bytes(2,byteorder="big")
                     msg += task.data
                     sndto = str(task.to)
-                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                        log.write(f"Will send to {sndto} mb {task.tag}\n")
+                    # with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                    #     log.write(f"Will send to {sndto} mb {task.tag}\n")
                     p = await self._lower_find_peer(SHA256(sndto))
-                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                        log.write(f"FOUND {sndto}\n")
+                    # with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                    #     log.write(f"FOUND {sndto}\n")
                     await self.send_stream(p.id_node,msg)
                     continue
                 elif isinstance(task, Loss):
-                    with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                        log.write(f"Sending loss grad to {task.to}\n")
+                    # with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                    #     log.write(f"Sending loss grad to {task.to}\n")
                     msg = bytearray()
                     msg += PPProtocl.BACK_FLAG.to_bytes(1,byteorder="big")
                     msg += task.tag.to_bytes(4,byteorder="big")
@@ -187,8 +187,9 @@ class PPProtocl(AbstractProtocol):
                             
                             await self.announce_end()
                             continue
-                        elif self.mb_send >= self.MB_SEND_COUNT:
+                        elif self.mb_send > self.MB_SEND_COUNT:
                             raise Exception(f"Too many microbatches have been sent? {self.memory} {self.MAX_MEM} {self.mb_send} {self.MB_SEND_COUNT}")
+                        
                         continue
 
                     continue
