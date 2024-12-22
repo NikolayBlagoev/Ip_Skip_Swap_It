@@ -200,20 +200,23 @@ class PPProtocl(AbstractProtocol):
             bid = int.from_bytes(data[1:5],byteorder="big")
             frm = int.from_bytes(data[5:7],byteorder="big")
             self.send_receives[bid] = frm
-            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
-                log.write(f"Will receive from {frm} mb {bid}\n")
+            
             originator = int.from_bytes(data[7:9],byteorder="big")
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"Will receive from {frm} mb {bid} originator {originator}\n")
             B = int.from_bytes(data[9:11],byteorder="big")
             T = int.from_bytes(data[11:13],byteorder="big")
             C = int.from_bytes(data[13:15],byteorder="big")
-            if self.memory == 0:
+            if self.memory == 0 and self.peer.pub_key != str(originator):
                 self.deferred.append(bid)
-            else:
+            elif self.peer.pub_key != str(originator):
                 self.memory -= 1
             nxt = self.communication(bid,self.peer.pub_key)
             if nxt == None and self.peer.pub_key != str(originator):
                 nxt = originator
             elif self.peer.pub_key == str(originator):
+                with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                    log.write(f"NEED TO COMPUTE LOSS FROM {frm} mb {bid}\n")
                 self.queue_out.put(Loss(bid, frm, 0, B, T, C, originator, None), True)
                 return
 

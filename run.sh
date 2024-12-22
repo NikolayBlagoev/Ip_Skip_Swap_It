@@ -1,3 +1,4 @@
+ps aux | grep python | grep -v "grep python" | awk '{print $2}' | xargs kill -9
 git pull
 rm log*
 for ((i=$1; i<$2; i=i+1))
