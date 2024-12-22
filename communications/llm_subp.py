@@ -134,7 +134,7 @@ class SubP(object):
                 if isinstance(task, Start):
                     
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"=======NEW MB:========\n")
+                        log.write(f"=======NEW MB:======== {time()}\n")
                     
                     try:
                         
@@ -159,8 +159,8 @@ class SubP(object):
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
-                    if tm2 - tm1 < self.process_time:
-                        sleep(self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < self.process_time:
+                    #     sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     self.memory -= 1
                     
@@ -195,8 +195,8 @@ class SubP(object):
                     
                     loss.backward()
                     tm2 = time()
-                    if tm2 - tm1 < 1.5*self.process_time:
-                        sleep(1.5*self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < 1.5*self.process_time:
+                    #     sleep(1.5*self.process_time - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
                     
@@ -204,7 +204,8 @@ class SubP(object):
                     
                 elif isinstance(task, Forward):
                     
-                    
+                    with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                        log.write(f"Processing forward to {task.to} {time()}\n")
                     x = pickle.loads(task.data)
                     self.memory -= 1
                     with no_grad():
@@ -218,18 +219,19 @@ class SubP(object):
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
-                    if tm2 - tm1 < self.process_time:
-                        sleep(self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < self.process_time:
+                    #     sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, pickle.dumps(ret)), True)
-                    
+                    with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                        log.write(f"SEND FORWARD {task.to} {time()}\n")
                     continue
                     
                 elif isinstance(task, Backward):
                     
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"Processing back to {task.to}\n")
+                        log.write(f"Processing back to {task.to} {time()}\n")
                     output = pickle.loads(task.data)
                     
                     tm1 = time()
@@ -239,15 +241,15 @@ class SubP(object):
                     
                     inp_batch.backward(output)
                     tm2 = time()
-                    if tm2 - tm1 < 2*self.process_time:
-                        sleep(2*self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < 2*self.process_time:
+                    #     sleep(2*self.process_time - (tm2 - tm1))
                     self.memory += 1
                     
                     if task.to != -1:
                         ret = inp_batch.grad
                         ret = ret.to("cpu")
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                            log.write(f"SEND BACK {task.to} {ret.shape[0]} {ret.shape[1]} {ret.shape[2]}\n")
+                            log.write(f"SEND BACK {task.to} {time()}\n")
                         
                         
                         self.queue_out.put(Backward(task.tag, task.frm, task.to, ret.shape[0], ret.shape[1], ret.shape[2], task.originator, pickle.dumps(ret)),True)
@@ -265,7 +267,7 @@ class SubP(object):
                 elif isinstance(task, Aggregate):
                     assert self.memory == self.MAX_MEM
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"===AGGEGATING====\n")
+                        log.write(f"===AGGEGATING==== {time()}\n")
                     self.buffer_in.clear()
                     self.buffer_out.clear()
                     cuda.empty_cache()
@@ -274,7 +276,7 @@ class SubP(object):
                     # update params
                     self.optimizer.step() # this also syncs across stage
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                        log.write(f"FINISHED AGGREGATING NOW IN {self.iteration}\n")
+                        log.write(f"FINISHED AGGREGATING NOW IN {self.iteration} {time()}\n")
                     # save model
                     if self.iteration % 2000 == 0:
                        save(self.net.state_dict(), f"{(self.epoch//2000) % 5}_{self.node_id}.pth") 
