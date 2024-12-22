@@ -185,19 +185,9 @@ class PPProtocl(AbstractProtocol):
                             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
                         elif self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
-                            self.send_receives.clear()
-                            self.deferred.clear()
-                            self.queue_out.put(Aggregate(0), True)
-                            msg = bytearray()
-                            msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                            for p in range(self.world_size):
-                                if str(p) == self.peer.pub_key:
-                                    continue
-                                p = await self._lower_find_peer(SHA256(str(p)))
-                                
-                                await self.send_datagram(msg, p.addr)
+                            await self.announce_end()
                             continue
-                        elif self.mb_send == self.MB_SEND_COUNT:
+                        elif self.mb_send >= self.MB_SEND_COUNT:
                             raise Exception(f"Too many microbatches have been sent? {self.memory} {self.MAX_MEM} {self.mb_send} {self.MB_SEND_COUNT}")
                         continue
 
@@ -207,6 +197,7 @@ class PPProtocl(AbstractProtocol):
                     if self.stage != 0:
                         continue
                     self.mb_send = 0
+                    # s\elf.memory = self./
                     loop = asyncio.get_event_loop() 
                     loop.create_task(self.start_iteration())
             except Exception as e:
@@ -242,6 +233,7 @@ class PPProtocl(AbstractProtocol):
                 self.processed.clear()
                 self.send_receives.clear()
                 self.deferred.clear()
+                self.memory = self.MAX_MEM
                 self.queue_out.put(Aggregate(0), True)
         
         return
