@@ -31,11 +31,15 @@ class DP_optim(object):
 
         barrier(self.dp_group.group)
         all_reduce(prev_grad, op = ReduceOp.SUM, group=self.dp_group.group)
-        # TODO CLIP IT TO 1.0!!!
+        
         tmp = split(prev_grad, self.len_sizes)
         with no_grad():
             for i, param in enumerate(self.net.parameters()):
-                param = param - self.lr*tmp[i].view(self.sizes[i]).to(self.device)/self.dp_group.g_size
+                param.grad = tmp[i].view(self.sizes[i]).to(self.device)/4
+                # param.grad = None
+            clip_grad_norm_(net.parameters(), 1)
+            for i, param in enumerate(self.net.parameters()):
+                param -= self.lr*param.grad
                 param.grad = None
         self.iteration += 1
         
