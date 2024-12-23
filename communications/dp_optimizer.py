@@ -20,26 +20,27 @@ class DP_optim(object):
 
     def step(self):
         tmp = []
-        if self.iteration == 0:
-            clip_grad_norm_(self.net.parameters(), 1)
-            for i, param in enumerate(self.net.parameters()):
-                if param.grad == None:
-                    continue
-                param -= self.lr*param.grad
-                param.grad = None
-            for param in self.net.parameters():
-                if param == None:
-                    tmp.append(zeros_like(param).view(-1))
-                                
-                    continue
-                tmp.append(param.view(-1))
-        else:
-            for param in self.net.parameters():
-                if param.grad == None:
-                    tmp.append(zeros_like(param).view(-1))
-                                
-                    continue
-                tmp.append(param.grad.view(-1))
+        with no_grad():
+            if self.iteration == 0:
+                clip_grad_norm_(self.net.parameters(), 1)
+                for i, param in enumerate(self.net.parameters()):
+                    if param.grad == None:
+                        continue
+                    param -= self.lr*param.grad
+                    param.grad = None
+                for param in self.net.parameters():
+                    if param == None:
+                        tmp.append(zeros_like(param).view(-1))
+                                    
+                        continue
+                    tmp.append(param.view(-1))
+            else:
+                for param in self.net.parameters():
+                    if param.grad == None:
+                        tmp.append(zeros_like(param).view(-1))
+                                    
+                        continue
+                    tmp.append(param.grad.view(-1))
         prev_grad = cat(tmp).to("cpu")
         print("GRADIENT MEAN BEFORE", mean(prev_grad))
         barrier(self.dp_group.group)
