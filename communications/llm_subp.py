@@ -124,12 +124,14 @@ class SubP(object):
             while self.started:
                 task = None
                 while self.queue_in.empty() and self.started and task == None:
+                    print(len(self.receives))
+
                     for idx,el in enumerate(self.receives):
                         if el[1].is_completed():
                             task = el[0]
                             self.receives.pop(idx)
                             break
-
+                        
                     continue
                 if not self.started:
                     break
