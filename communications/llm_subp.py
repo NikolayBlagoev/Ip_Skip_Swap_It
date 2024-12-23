@@ -127,9 +127,11 @@ class SubP(object):
                     # print(len(self.receives))
 
                     for idx,el in enumerate(self.receives):
+                        sleep(0.5)
                         if el[1].is_completed():
                             
                             task = el[0]
+
                             with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                                 log.write(f"RECEIVED FIMISHED {task.tag}\n")
                             self.receives.pop(idx)
