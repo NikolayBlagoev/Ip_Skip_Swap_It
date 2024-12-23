@@ -14,10 +14,10 @@ import json
 from pprint import pprint
 from communications.pp_protocol import PPProtocl
 from schedulers.communication_costs import *
-seq_l = 128
-n_layers = 4
-batch_size = 1
-dmodel = 256
+seq_l = 256
+n_layers = 2
+batch_size = 8
+dmodel = 288
 num_heads = 6
 multiple_of = 32
 
