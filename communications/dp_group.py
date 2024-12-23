@@ -7,7 +7,7 @@ def initialise_communication(partitions, pid, addr, world_size):
         addr = "localhost"
     os.environ["MASTER_ADDR"] = addr
     os.environ["MASTER_PORT"] = "9010"
-    init_process_group(backend="mpi", rank=pid, world_size=world_size)
+    init_process_group(backend="gloo", rank=pid, world_size=world_size)
     return DP_Group(partitions,pid)
 
 class DP_Group(object):
@@ -17,10 +17,10 @@ class DP_Group(object):
         self.g_size = 0
         for p in partitions:
             if pid in p:
-                self.group = new_group(p, backend="mpi")
+                self.group = new_group(p, backend="gloo")
                 self.g_size = len(p)
             else:
-                new_group(p, backend="mpi")
+                new_group(p, backend="gloo")
     
 
     
