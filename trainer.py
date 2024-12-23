@@ -14,12 +14,12 @@ import json
 from pprint import pprint
 from communications.pp_protocol import PPProtocl
 from schedulers.communication_costs import *
-seq_l = 64
-n_layers = 2
-batch_size = 3
-dmodel = 128
-num_heads = 4
-multiple_of = 4
+seq_l = 128
+n_layers = 4
+batch_size = 1
+dmodel = 256
+num_heads = 6
+multiple_of = 32
 
 if __name__ == '__main__':
     curr_id = int(argv[1])
