@@ -1,6 +1,6 @@
 from simplellm.dataloaders import Tiny_Shakespeare
 from simplellm.tokenizers import SPTokenizer
-from simplellm.dataloaders import TinyStories
+from simplellm.dataloaders import Wikipedia_Dataset
 from simplellm.llama.llama import SwapLLama,LLama,SkipLLama
 from torch import optim, save, no_grad
 import random
@@ -14,7 +14,7 @@ f = 0.00
 print(pth_num,f)
 seq_l = 256
 tkns = SPTokenizer()
-ts = TinyStories(tkns,batch_size = 96 // pth_num, seq_l=seq_l)
+ts = Wikipedia_Dataset(tkns,batch_size = 96 // pth_num, seq_l=seq_l)
 net = LLama(SkipLLama,tkns.vocab_size,dmodel=288,num_heads=6,multiple_of=32,ctx_size=seq_l,n_layers=16)
 vocab_size = tkns.vocab_size
 random.seed(10)
@@ -42,7 +42,7 @@ for iteration in range(20):
             to_skip = []
             
             #print(exec_order,to_skip,crashed)
-            x = net(x,0,None, None,[])
+            x = net(x,to_skip=[])
             B, T, C = x.shape
             x = x.view(B*T,C)
             y = y.view(B*T)
