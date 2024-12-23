@@ -20,13 +20,26 @@ class DP_optim(object):
 
     def step(self):
         tmp = []
-        
-        for param in self.net.parameters():
-            if param.grad == None:
-                tmp.append(zeros_like(param.data).view(-1))
-                            
-                continue
-            tmp.append(param.grad.view(-1))
+        if self.iteration == 0:
+            clip_grad_norm_(self.net.parameters(), 1)
+            for i, param in enumerate(self.net.parameters()):
+                if param.grad == None:
+                    continue
+                param -= self.lr*param.grad
+                param.grad = None
+            for param in self.net.parameters():
+                if param == None:
+                    tmp.append(zeros_like(param).view(-1))
+                                
+                    continue
+                tmp.append(param.view(-1))
+        else:
+            for param in self.net.parameters():
+                if param.grad == None:
+                    tmp.append(zeros_like(param).view(-1))
+                                
+                    continue
+                tmp.append(param.grad.view(-1))
         prev_grad = cat(tmp).to("cpu")
         print("GRADIENT MEAN BEFORE", mean(prev_grad))
         barrier(self.dp_group.group)
@@ -34,13 +47,17 @@ class DP_optim(object):
         print("GRADIENT MEAN AFTER", mean(prev_grad/4))
         tmp = split(prev_grad, self.len_sizes)
         with no_grad():
-            for i, param in enumerate(self.net.parameters()):
-                param.grad = tmp[i].view(self.sizes[i]).to(self.device)/4
-                # param.grad = None
-            clip_grad_norm_(self.net.parameters(), 1)
-            for i, param in enumerate(self.net.parameters()):
-                param -= self.lr*param.grad
-                param.grad = None
+            if self.iteration == 0:
+                for i, param in enumerate(self.net.parameters()):
+                    param = tmp[i].view(self.sizes[i]).to(self.device)/self.dp_group.g_size
+            else:
+                for i, param in enumerate(self.net.parameters()):
+                    param.grad = tmp[i].view(self.sizes[i]).to(self.device)/4
+                    # param.grad = None
+                clip_grad_norm_(self.net.parameters(), 1)
+                for i, param in enumerate(self.net.parameters()):
+                    param -= self.lr*param.grad
+                    param.grad = None
         self.iteration += 1
         
 

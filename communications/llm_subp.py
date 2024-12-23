@@ -10,7 +10,7 @@ from .dp_optimizer import DP_optim
 from torch import cuda, no_grad
 import traceback
 from contextlib import redirect_stdout
-from simplellm.dataloaders import Wikipedia_Dataset
+from simplellm.dataloaders import Wikipedia_Dataset, TinyStories
 import torch.nn.functional as F
 from time import time, sleep
 import pickle
@@ -72,7 +72,7 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
     
     if stage == 0:
         tkns = SPTokenizer()
-        ts = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l)
+        ts = TinyStories(tkns,batch_size = batch_size, seq_l=seq_l)
         vals = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l, split = "train")
         net = LLamaFirstStage(tkns.vocab_size, dmodel, num_heads, n_layers, multiple_of = multiple_of, ctx_size= seq_l)
         
