@@ -246,7 +246,7 @@ class SubP(object):
                     self.memory += 1
                     
                     if task.to != -1:
-                        ret = inp_batch.grad
+                        ret = self.buffer_in[task.tag].grad
                         ret = ret.to("cpu")
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"SEND BACK {task.to} {time()}\n")
