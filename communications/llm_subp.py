@@ -61,7 +61,7 @@ class Aggregate:
     epoch: int
 
 def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int = 0, stage: int = 0, seq_l: int = 256, n_layers = 4, 
-                    batch_size = 8, dmodel = 256, multiple_of = 4, num_heads = 16, memory = 3, process_time = 2,
+                    batch_size = 8, dmodel = 256, multiple_of = 4, num_heads = 16, memory = 3, process_time = 2, mb_count = 12,
                     device = "cuda"):
     manual_seed(0)
     world_size = 0
@@ -77,14 +77,13 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
         
         optimizer = DP_optim(4e-3, net, group, device)
         with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
-            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, memory = memory,process_time=process_time)
+            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, memory = memory,process_time=process_time, mb_count=mb_count)
             loc.start()
     else:
         net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,multiple_of=multiple_of,n_layers=n_layers)
         optimizer = DP_optim(4e-3, net, group, device)
-        with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
-            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device, memory = memory,process_time=process_time)
-            loc.start()
+        loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device, memory = memory,process_time=process_time)
+        loc.start()
 
 
 class SubP(object):
@@ -164,8 +163,8 @@ class SubP(object):
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
-                    if tm2 - tm1 < self.process_time:
-                        sleep(self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < self.process_time:
+                    #     sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     self.memory -= 1
                     
@@ -216,8 +215,8 @@ class SubP(object):
                     
                     loss.backward()
                     tm2 = time()
-                    if tm2 - tm1 < 2*self.process_time:
-                        sleep(2*self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < 2*self.process_time:
+                    #     sleep(2*self.process_time - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
                     send = isend(ret, task.frm)
@@ -225,7 +224,7 @@ class SubP(object):
                     if self.iteration == 0:
                         send.wait()
                 elif isinstance(task, Forward):
-                    #TODO: Need to receive asynchonously after 1st round
+                    
                     if task.data == None:
                         x = zeros((task.B,task.T,task.C))
                         if self.iteration == 0:
@@ -265,8 +264,8 @@ class SubP(object):
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
-                    if tm2 - tm1 < self.process_time:
-                        sleep(self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < self.process_time:
+                    #     sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     send = isend(ret,task.to)
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, None), True)
@@ -300,12 +299,12 @@ class SubP(object):
                     
                     inp_batch.backward(output)
                     tm2 = time()
-                    if tm2 - tm1 < 2*self.process_time:
-                        sleep(2*self.process_time - (tm2 - tm1))
+                    # if tm2 - tm1 < 2*self.process_time:
+                    #     sleep(2*self.process_time - (tm2 - tm1))
                     self.memory += 1
                     send = None
                     if task.to != -1:
-                        ret = inp_batch.grad
+                        ret = self.buffer_in[task.tag].grad
                         ret = ret.to("cpu")
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"SEND BACK {task.to} {ret.shape[0]} {ret.shape[1]} {ret.shape[2]}\n")

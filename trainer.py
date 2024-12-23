@@ -39,8 +39,8 @@ if __name__ == '__main__':
     partitions = config["partitions"]
     memory = config["memory"]
     send_mbs = 2
-    # if setting == "baseline":
-        # send_mbs = config["baseline-mb-count"]
+    if setting == "baseline":
+        send_mbs = config["baseline-mb-count"]
     for idx, v in enumerate(partitions):
         if curr_id in v:
             assert own_stage == -1
@@ -82,7 +82,7 @@ if __name__ == '__main__':
         queue_in = Queue(1024)
         queue_out = Queue(1024)
         
-        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,compute_time,"cuda")) 
+        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,compute_time,send_mbs,"cuda")) 
         trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
         trainingp.set_lower(gossip)
         subprocess.start()

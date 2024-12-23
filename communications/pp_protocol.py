@@ -69,39 +69,37 @@ class PPProtocl(AbstractProtocol):
         for b in range(self.memory if self.iteration > 0 else 1):
             if self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
-                            self.send_receives.clear()
-                            self.deferred.clear()
-                            self.queue_out.put(Aggregate(0), True)
-                            msg = bytearray()
-                            msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                            for p in range(self.world_size):
-                                if str(p) == self.peer.pub_key:
-                                    continue
-                                p = await self._lower_find_peer(SHA256(str(p)))
-                                
-                                await self.send_datagram(msg, p.addr)
-                            return
-            self.memory -= 1
-            tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
-            self.mb_send += 1
-            nxt = self.communication(tag,self.peer.pub_key)
-            if nxt == None:
-                self.send_receives.clear()
-                self.deferred.clear()
-                self.queue_out.put(Aggregate(0), True)
-                msg = bytearray()
-                msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                for p in range(self.world_size):
-                    if str(p) == self.peer.pub_key:
-                        continue
-                    p = await self._lower_find_peer(SHA256(str(p)))
-                                
-                    await self.send_datagram(msg, p.addr)
+                await self.announce_end()
+                return
+            if self.mb_send == self.MB_SEND_COUNT:
                 break
             
-
+            tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
+            
+            nxt = self.communication(tag,self.peer.pub_key)
+            if nxt == None:
+                sleep(1)
+                await self.announce_end()
+                return
+            self.mb_send += 1
+            self.memory -= 1
             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
 
+    async def announce_end(self):
+        self.mb_send = 0
+        self.memory = self.MAX_MEM
+        self.send_receives.clear()
+        self.deferred.clear()
+        self.queue_out.put(Aggregate(0), True)
+        msg = bytearray()
+        msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
+        for p in range(self.world_size):
+            if str(p) == self.peer.pub_key:
+                continue
+            p = await self._lower_find_peer(SHA256(str(p)))
+                                
+            await self.send_datagram(msg, p.addr)
+            
     async def start(self, p: Peer):
         await super().start(p)
         
@@ -161,6 +159,7 @@ class PPProtocl(AbstractProtocol):
                     p = await self._lower_find_peer(SHA256(sndto))
                     await self.send_datagram(msg, p.addr)
                 elif isinstance(task, Backward):
+                    self.memory += 1
                     if self.stage != 0:
                         msg = bytearray()
                         msg += PPProtocl.BACK_FLAG.to_bytes(1,byteorder="big")
@@ -173,6 +172,11 @@ class PPProtocl(AbstractProtocol):
                         sndto = str(task.to)
                         p = await self._lower_find_peer(SHA256(sndto))
                         await self.send_datagram(msg, p.addr)
+                        
+                        if len(self.deferred) > 0:
+                            tg = self.deferred.pop()
+                            self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0, None), True)
+                            self.memory -= 1
                     else:
                         if self.mb_send < self.MB_SEND_COUNT:
                             
@@ -183,17 +187,7 @@ class PPProtocl(AbstractProtocol):
                             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
                         elif self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
-                            self.send_receives.clear()
-                            self.deferred.clear()
-                            self.queue_out.put(Aggregate(0), True)
-                            msg = bytearray()
-                            msg += PPProtocl.AGGREGATE_FLAG.to_bytes(1,byteorder="big")
-                            for p in range(self.world_size):
-                                if str(p) == self.peer.pub_key:
-                                    continue
-                                p = await self._lower_find_peer(SHA256(str(p)))
-                                
-                                await self.send_datagram(msg, p.addr)
+                            await self.announce_end()
                             continue
                         else:
                             raise Exception("Too many microbatches have been sent?")
@@ -265,7 +259,7 @@ class PPProtocl(AbstractProtocol):
             B = int.from_bytes(data[9:11],byteorder="big")
             T = int.from_bytes(data[11:13],byteorder="big")
             C = int.from_bytes(data[13:15],byteorder="big")
-            self.memory += 1
+            
             nxt = self.send_receives.get(bid)
 
             if str(originator) == self.peer.pub_key:
@@ -274,10 +268,7 @@ class PPProtocl(AbstractProtocol):
             else:
                 del self.send_receives[bid]
             self.queue_out.put(Backward(bid, frm, nxt, B, T, C, originator, None), True)
-            if len(self.deferred) > 0:
-                tg = self.deferred.pop()
-                self.queue_out.put(Forward(tg, 0, 0, 0, 0, 0, 0, None), True)
-                self.memory -= 1
+            
 
             return
         elif data[0] == PPProtocl.AGGREGATE_FLAG:
