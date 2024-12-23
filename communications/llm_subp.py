@@ -200,7 +200,7 @@ class SubP(object):
                     ret = x.grad
                     ret = ret.to("cpu")
                     
-                    self.queue_out.put(Loss(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, pickle.dumps(x)), True)
+                    self.queue_out.put(Loss(task.tag, task.frm, task.to, x.grad.shape[0], x.grad.shape[1], x.grad.shape[2], task.originator, pickle.dumps(ret)), True)
                     
                 elif isinstance(task, Forward):
                     
