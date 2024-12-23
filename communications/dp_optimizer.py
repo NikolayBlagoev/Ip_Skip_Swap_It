@@ -37,7 +37,7 @@ class DP_optim(object):
             for i, param in enumerate(self.net.parameters()):
                 param.grad = tmp[i].view(self.sizes[i]).to(self.device)/4
                 # param.grad = None
-            clip_grad_norm_(net.parameters(), 1)
+            clip_grad_norm_(self.net.parameters(), 1)
             for i, param in enumerate(self.net.parameters()):
                 param -= self.lr*param.grad
                 param.grad = None
