@@ -15,7 +15,7 @@ print(pth_num,f)
 seq_l = 256
 tkns = SPTokenizer()
 ts = Wikipedia_Dataset(tkns,batch_size = 96 // pth_num, seq_l=seq_l)
-net = LLama(SkipLLama,tkns.vocab_size,dmodel=288,num_heads=6,multiple_of=32,ctx_size=seq_l,n_layers=16)
+net = LLama(SkipLLama,tkns.vocab_size,dmodel=288,num_heads=6,multiple_of=32,ctx_size=seq_l,n_layers=8)
 vocab_size = tkns.vocab_size
 random.seed(10)
 lr = 1e-3

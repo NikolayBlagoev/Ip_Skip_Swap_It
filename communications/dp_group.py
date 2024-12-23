@@ -17,6 +17,7 @@ class DP_Group(object):
         self.g_size = 0
         for p in partitions:
             if pid in p:
+                print("IM IN GROUP",p,pid)
                 self.group = new_group(p, backend="gloo")
                 self.g_size = len(p)
             else:
