@@ -107,6 +107,7 @@ class SubP(object):
         self.started = True
         self.deferred = {}
         self.store = []
+        self.sends = []
         self.epoch = 0
         
         if stage == 0:
@@ -125,8 +126,17 @@ class SubP(object):
                 task = None
                 while self.queue_in.empty() and self.started and task == None:
                     # print(len(self.receives))
-
+                    for idx,el in enumerate(self.sends):
+                        # sleep(0.5)
+                        if len(self.receives) >= 3:
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"SENDING WAITING ON 1\n")
+                            el.wait()
+                        if el.is_completed():
+                            break
                     for idx,el in enumerate(self.receives):
+                        if task != None:
+                            break
                         # sleep(0.5)
                         if len(self.receives) >= 3:
                             with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
@@ -187,7 +197,8 @@ class SubP(object):
                             log.write(f"Finished sending to {task.to}\n")
                     else:
                         self.store.append(ret)
-                        isend(ret,task.to)
+                        req = isend(ret,task.to)
+                        self.sends.append(req)
                         # sleep(5) #simulate computation
                     
                     continue
