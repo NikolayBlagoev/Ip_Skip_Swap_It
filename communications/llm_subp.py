@@ -129,6 +129,8 @@ class SubP(object):
                     for idx,el in enumerate(self.receives):
                         # sleep(0.5)
                         if len(self.receives) >= 3:
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"WAITING ON 1 {task.tag}\n")
                             el[1].wait()
                         if el[1].is_completed():
                             
