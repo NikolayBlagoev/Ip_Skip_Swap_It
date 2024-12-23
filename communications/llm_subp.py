@@ -127,7 +127,9 @@ class SubP(object):
                     # print(len(self.receives))
 
                     for idx,el in enumerate(self.receives):
-                        sleep(0.5)
+                        # sleep(0.5)
+                        if len(self.receives) >= 3:
+                            el[1].wait()
                         if el[1].is_completed():
                             
                             task = el[0]
