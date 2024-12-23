@@ -181,6 +181,7 @@ class SubP(object):
                             log.write(f"Finished sending to {task.to}\n")
                     else:
                         isend(ret,task.to)
+                        sleep(10) #simulate computation
                     
                     continue
                 elif isinstance(task, Loss):
