@@ -62,7 +62,7 @@ class Aggregate:
     epoch: int
 
 def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int = 0, stage: int = 0, seq_l: int = 256, n_layers = 4, 
-                    batch_size = 8, dmodel = 256, multiple_of = 4, num_heads = 16, memory = 3, process_time = 2,
+                    batch_size = 8, dmodel = 256, multiple_of = 4, num_heads = 16, memory = 3, process_time = 2, mb_count = 12,
                     device = "cuda"):
     manual_seed(0)
     world_size = 0
@@ -78,13 +78,13 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
         
         optimizer = DP_optim(4e-3, net, group, device)
         with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
-            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, memory = memory,process_time=process_time)
+            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, mb_count=mb_count, memory = memory,process_time=process_time)
             loc.start()
     else:
         net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,multiple_of=multiple_of,n_layers=n_layers)
         optimizer = DP_optim(4e-3, net, group, device)
         with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
-            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device, memory = memory,process_time=process_time)
+            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time)
             loc.start()
 
 
