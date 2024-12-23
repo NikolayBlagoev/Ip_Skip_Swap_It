@@ -106,7 +106,7 @@ class SubP(object):
         self.mb_count = mb_count
         self.started = True
         self.deferred = {}
-        
+        self.store = []
         self.epoch = 0
         
         if stage == 0:
@@ -186,8 +186,9 @@ class SubP(object):
                         with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                             log.write(f"Finished sending to {task.to}\n")
                     else:
+                        self.store.append(ret)
                         isend(ret,task.to)
-                        sleep(5) #simulate computation
+                        # sleep(5) #simulate computation
                     
                     continue
                 elif isinstance(task, Loss):
