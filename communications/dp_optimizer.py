@@ -1,6 +1,6 @@
 from torch import Tensor
 from torch.nn.utils import clip_grad_norm_
-from torch import no_grad, cat, zeros_like, split
+from torch import no_grad, cat, zeros_like, split, mean
 from torch.distributed import barrier, all_reduce, ReduceOp
 class DP_optim(object):
     def __init__(self, lr, model, dp_group, device):
@@ -28,10 +28,10 @@ class DP_optim(object):
                 continue
             tmp.append(param.grad.view(-1))
         prev_grad = cat(tmp).to("cpu")
-
+        print("GRADIENT MEAN BEFORE", mean(prev_grad))
         barrier(self.dp_group.group)
         all_reduce(prev_grad, op = ReduceOp.SUM, group=self.dp_group.group)
-        
+        print("GRADIENT MEAN AFTER", mean(prev_grad/4))
         tmp = split(prev_grad, self.len_sizes)
         with no_grad():
             for i, param in enumerate(self.net.parameters()):

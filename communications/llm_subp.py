@@ -83,9 +83,9 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
     else:
         net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,multiple_of=multiple_of,n_layers=n_layers)
         optimizer = DP_optim(4e-3, net, group, device)
-        with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
-            loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time)
-            loc.start()
+        # with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
+        loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time)
+        loc.start()
 
 
 class SubP(object):
