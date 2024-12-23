@@ -130,7 +130,7 @@ class SubP(object):
                         # sleep(0.5)
                         if len(self.receives) >= 3:
                             with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
-                                log.write(f"WAITING ON 1 {task.tag}\n")
+                                log.write(f"WAITING ON 1\n")
                             el[1].wait()
                         if el[1].is_completed():
                             
