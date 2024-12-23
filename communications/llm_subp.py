@@ -124,11 +124,14 @@ class SubP(object):
             while self.started:
                 task = None
                 while self.queue_in.empty() and self.started and task == None:
-                    print(len(self.receives))
+                    # print(len(self.receives))
 
                     for idx,el in enumerate(self.receives):
                         if el[1].is_completed():
+                            
                             task = el[0]
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"RECEIVED FIMISHED {task.tag}\n")
                             self.receives.pop(idx)
                             break
                         
@@ -237,6 +240,8 @@ class SubP(object):
                                 log.write(f"RECEIVED FROM {task.frm}\n")
                             task.data = x
                         else:
+                            with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
+                                log.write(f"ASYNC TO RECEIVE FROM {task.frm}\n")
                             task.data = x
                             self.receives.append((task,irecv(x,task.frm)))
                             continue
