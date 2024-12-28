@@ -8,7 +8,7 @@ from deccom.nodes import StreamNode, Node
 from deccom.protocols.defaultprotocol import DefaultProtocol
 from deccom.peers import Peer
 from deccom.protocols.streamprotocol import StreamProtocol
-from communications.llm_subp import run_p
+
 from multiprocessing import Lock, Process, Queue, current_process
 import json
 from schedulers.communication_costs import delay_map
@@ -79,6 +79,8 @@ if __name__ == '__main__':
         world_size += len(v)
     if setting == "zbh1":
         from communications.llm_subp_zbh1 import run_p
+    else:
+        from communications.llm_subp import run_p
     assert own_stage != -1
     def commfunc(bid, ndkey):
         if setting == "baseline" or setting == "zbh1":
