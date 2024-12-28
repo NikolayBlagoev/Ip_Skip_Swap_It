@@ -88,6 +88,13 @@ if __name__ == '__main__':
             # with open(f"log_stats_proj_2_{curr_id}.txt", "a") as log:
             #     log.write(f"Paritions {partitions[own_stage + 1]}, {rank_order}, {own_stage}\n")
             return partitions[own_stage + 1][rank_order]
+        elif setting == "ca-partial":
+            # ca-paths
+            b_path = config["ca-paths"][str(bid)]
+            if ndkey in b_path:
+                return b_path[ndkey]
+            else:
+                return None
             
     while True:
         my_peer  = Peer(None, pub_key=str(curr_id))
