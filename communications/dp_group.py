@@ -31,7 +31,7 @@ class DP_Group(object):
                     b = delay_map[pid][pid2]
                     self.worst_band = min(b,self.worst_band)
                 self.g_size = len(p)
-                self.partition  = 0
+                self.partition  = idx
             else:
                 new_group(p, backend="gloo")
     

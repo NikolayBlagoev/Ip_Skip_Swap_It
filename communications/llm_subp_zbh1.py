@@ -207,7 +207,7 @@ class SubP(object):
                     tm2 = time()
                     if tm2 - tm1 < 0.75*self.process_time:
                         sleep(0.75*self.process_time - (tm2 - tm1))
-                    if self.MAX_PROCESS - len(WeightStore.cache)/self.update_delta > min(self.optimizer.dp_group.group,self.MAX_MEM):
+                    if self.MAX_PROCESS - len(WeightStore.cache)/self.update_delta > min(self.optimizer.dp_group.g_size,self.MAX_MEM):
                         tm1 = time()
                         for i in range(self.update_delta):
                             
