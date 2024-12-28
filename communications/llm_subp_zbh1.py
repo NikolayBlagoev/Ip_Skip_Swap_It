@@ -16,51 +16,7 @@ from time import time, sleep
 import pickle
 from simplellm.utils import WeightStore
 # Messages Exchanged by the processes
-@dataclass
-class Forward:
-    tag: int
-    frm: int
-    to: int
-    B: int
-    T: int
-    C: int
-    originator: int
-    data: Tensor
-@dataclass
-class Backward:
-    tag: int
-    frm: int
-    to: int
-    B: int
-    T: int
-    C: int
-    originator: int
-    data: Tensor
-
-@dataclass
-class Start:
-    tag: int
-    to: int
-    originator: int
-@dataclass
-class Deferred:
-    tag: int
-@dataclass
-class Loss:
-    tag: int
-    frm: int
-    to: int
-    B: int
-    T: int
-    C: int
-    originator: int
-    data: Tensor
-
-
-
-@dataclass
-class Aggregate:
-    epoch: int
+from .llm_subp import Aggregate, Forward, Backward, Loss, Start, Deferred
 
 def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int = 0, stage: int = 0, seq_l: int = 256, n_layers = 4, 
                     batch_size = 8, dmodel = 256, num_heads = 16, memory = 3, process_time = 2, mb_count = 12, cost_map = [],
@@ -80,7 +36,7 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
         optimizer = DP_optim(4e-3, net, group, device)
         with open(f"log_stats_proj_2_{node_id}.txt", "a") as log:
             log.write(f"Optimizer ready!\n")
-        loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, mb_count=mb_count, memory = memory,process_time=process_time)
+        loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, mb_count=mb_count, memory = memory,process_time=process_time,MAX_PROCESS=MAX_PROCESS)
         loc.start()
     else:
         net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,n_layers=n_layers, linear_implementation="delayed")

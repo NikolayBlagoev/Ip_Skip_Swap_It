@@ -68,15 +68,18 @@ class PPProtocl(AbstractProtocol):
         self.mb_send = 0
         
         for b in range(self.memory):
+            
             if self.mb_send == self.MB_SEND_COUNT and self.memory == self.MAX_MEM:
                             
                 await self.announce_end()
                 return
             if self.mb_send == self.MB_SEND_COUNT:
+                
                 break
             
             tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
-            
+            with open(f"log_stats_proj_2_{self.peer.pub_key}.txt", "a") as log:
+                log.write(f"QUEUEIN MB {tag}\n")
             nxt = self.communication(tag,self.peer.pub_key)
             if nxt == None:
                 
