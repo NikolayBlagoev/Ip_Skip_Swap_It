@@ -191,7 +191,7 @@ class PPProtocl(AbstractProtocol):
                         if self.mb_send < self.MB_SEND_COUNT:
                             
                             self.memory -= 1
-                            tag = self.dp_order*self.MB_SEND_COUNT + self.mb_send
+                            tag = task.tag
                             self.mb_send += 1
                             nxt = self.communication(tag,self.peer.pub_key)
                             self.queue_out.put(Start(tag,nxt,int(self.peer.pub_key)), True)
