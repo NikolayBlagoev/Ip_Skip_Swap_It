@@ -38,8 +38,8 @@ if __name__ == '__main__':
     with open("communication_4_samples_llama_1_5b.json", 'r') as file:
         config = json.load(file)
     def delay_map(currid,otherid):
-        p1 = config["locations"][currid]
-        p2 = config["locations"][otherid]
+        p1 = config["locations"][int(currid)]
+        p2 = config["locations"][int(otherid)]
         if DELAY_BANDWIDTHS.get(p1+"-"+p2) != None:
             ret = DELAY_BANDWIDTHS.get(p1+"-"+p2)
         elif DELAY_BANDWIDTHS.get(p2+"-"+p1) != None:

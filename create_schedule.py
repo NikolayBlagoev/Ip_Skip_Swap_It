@@ -9,8 +9,8 @@ import random
 import numpy as np
 from schedulers.com_sym import *
 from schedulers.communication_costs import *
-random.seed(19)
-np.random.seed(19)
+random.seed(20)
+np.random.seed(20)
 PAT_LENGTH = 4
 MAX_MB_PER_STAGE = 9
 
