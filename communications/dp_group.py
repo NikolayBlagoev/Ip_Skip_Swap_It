@@ -16,9 +16,9 @@ class DP_Group(object):
         self.group = None
         self.pid = pid
         self.delay_map = delay_map
-        self.compute_time = compute_time
+        
         self.g_size = 0
-        self.desired_time = desired_time
+        
         self.worst_band = 100
         for p in partitions:
             if pid in p:
