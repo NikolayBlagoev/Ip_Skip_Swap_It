@@ -63,7 +63,7 @@ if __name__ == '__main__':
     memory = config["memory"]
     send_mbs = 0
     if setting == "baseline":
-        send_mbs = config["baseline-sends"]
+        send_mbs = int(config["baseline-sends"])
         from communications.pp_protocol import PPProtocl as PPProtocl
     elif setting == "ca-partial":
         send_mbs = config["ours-sends"]
