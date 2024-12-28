@@ -71,7 +71,7 @@ for _ in range(1):
 
 # reconstruct arrangement of nodes: 
 ret = bst
-
+output["memory"] = memory
 output["partitions"] = ret
 output["GCMAscore"] = score
 output["locations"] = node_list
