@@ -68,7 +68,7 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
     world_size = 0
     for v in partitions:
         world_size += len(v)
-    group = initialise_communication(partitions,node_id, main_addr, world_size,desired_time)
+    group = initialise_communication(partitions,node_id, main_addr, world_size,cost_map)
     
     if stage == 0:
         tkns = SPTokenizer()
