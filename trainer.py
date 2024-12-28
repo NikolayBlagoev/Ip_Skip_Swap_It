@@ -15,7 +15,7 @@ from schedulers.communication_costs import delay_map
 from deccom.protocols.delayprotocol import DelayProtocol
 from pprint import pprint
 
-from schedulers.communication_costs import DELAY_BANDWIDTHS
+from schedulers.communication_costs import *
 seq_l = 4096
 n_layers = 4
 batch_size = 4
