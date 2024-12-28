@@ -47,7 +47,7 @@ if __name__ == '__main__':
         else:
             ret = (1,100)
 
-    return (ret[0],ret[1])
+        return (ret[0],ret[1])
     loc = config["locations"][curr_id]
     world = len(config["locations"])
     cost_map = [[0 for _ in range(world)] for _ in range(world)]
