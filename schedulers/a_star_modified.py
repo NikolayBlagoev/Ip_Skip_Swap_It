@@ -38,24 +38,28 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
     h: List[a_star_item_modified] = []
     
     lng -= 1
-    # print("---",agidx,"---")
+    
     heapq.heapify(h)
     heapq.heappush(h,a_star_item_modified(dt,dt,start_idx,start_idx,None,False,[]))
     
     def conflict_check(conflict: Conflict, time, weight):
+        # check for conflicts
         if conflict.type != 3:
+            # if not type 3 conflict - no need to check
             return time
         # print("TYPE 3?",conflict.agidx,conflict.ndix,time ,weight,conflict.tmstart,conflict.tmend)
-        if (time >= conflict.tmstart and time <= conflict.tmend) or (time + weight >= conflict.tmstart and time + weight <= conflict.tmend):
-        
+        if (time >= conflict.tmstart and time < conflict.tmend) or (time + weight >= conflict.tmstart and time + weight < conflict.tmend):
+            # our start time is between the conflict start time and end time or our end time is between them - conflict
             # print("TYPE 3!!!",conflict.agidx,conflict.ndix,time ,weight,conflict.tmstart,conflict.tmend)
             return conflict.tmend
-        elif time <= conflict.tmstart and time + weight >= conflict.tmend:
-            return conflict.tmend
+        elif (time <= conflict.tmstart and time + weight > conflict.tmstart) or (time <= conflict.tmend and time + weight > conflict.tmend):
+            # the conflict's start time is between our time start and time end or the conflicts time end is between them - conflict
+            return conflict.tmend # on conflict we delay our time to the conflcit time end
         else:
-            return time
+            return time # no conflict current time
 
     def reconstruct_path(path_edges: List[Edge],frm,dt):
+        # RECONDSTURCT THE PATH ONCE WE HAVE IT. COST OF THE PATH IS FORWARD + BACKWARD (COMPUTATIONS AND COMMUNICATIONS TAKEN INTO ACCOUNT)
         path: List[Tuple[idx,Edge]] = []
         el: Tuple[idx,Edge]= (frm,None)
         node_visits = []
@@ -78,21 +82,25 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
             if edg:
                 max_offset += edg.w
             flg = True
+            process_time = g.nodes[el].weight
+            if el == frm and edg != None:
+                process_time /= 4
             while flg:
                 flg = False
                 for c in conflicts:
                     
                     if c.agidx == agidx and c.ndix == el:
                         tmp_m = max_offset
-                        max_offset = max(conflict_check(c,max_offset,g.nodes[el].weight),max_offset)
+                        max_offset = max(conflict_check(c,max_offset,process_time),max_offset)
                         if max_offset > tmp_m:
                             flg = True
+                    
 
                         
             
             t = max_offset
             
-            t += g.nodes[el].weight
+            t += process_time
             node_visits.append((el,max_offset,t))
         
 
@@ -135,46 +143,56 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
     while len(h) > 0:
         el = heapq.heappop(h)
         t = el.dist
-        assert t >= prv_dist
-        prv_dist = t
-        t = el.time
+        assert t >= prv_dist # make sure the distance (time) can only increase
+        prv_dist = t 
+        t = el.time # actual time (distance includes heuristic)
         if visitable[agidx][el.idx] == 0:
             # print("cannot visit",el.idx)
+            # if not visitable (cant visit this edge), continue
             continue
         # print(t)
-        max_offset = t
+        max_offset = t # check for conflicts
         if el.idx == start_idx and el.back:
-            
+            # if we made it back - this is the solution
             return el.time, el.path, agidx
-        has_conflict = True
-        while has_conflict:
-            has_conflict = False
-            for c in conflicts:
-                
-                if c.agidx == agidx and c.ndix == el.idx:
+        
+        
+        
+        for c in conflicts:
+            # check if concflict with current time at given locatiom
+            if c.agidx == agidx and c.ndix == el.idx:
                     
-                    max_offset = max(conflict_check(c,max_offset,g.nodes[el.idx].weight),max_offset)
+                max_offset = max(conflict_check(c,max_offset,g.nodes[el.idx].weight),max_offset)
+                
                     
 
         if max_offset > t:
+            # conflict has occured
             if max_offset == float("inf"):
+                # we visited a forbidden node (not visitable)
                 continue
+            # requeue this node with the proper delay
+            # max_offset - t gives us the time delay we need to wait outside of this node
             heapq.heappush(h,a_star_item_modified(max_offset - t + el.dist,max_offset, el.reachedfrom,el.idx,el.edg,el.back,el.path))
             continue
+        # time gets increased wiht amount of time needed to process mb in forward
         el.time += g.nodes[el.idx].weight
         
         
         if el.idx == start_idx and len(h) != 0:
             
             
-            
+            # we got back - reconstruct path and record the time
             path,t = reconstruct_path(el.path,start_idx,dt)
             # print("END REACHED",t,agidx)
             heapq.heappush(h,a_star_item_modified(t,t,None,start_idx,None,True,path))
             continue
-        number_of_swaps = 0
-        frontier = 0
-        partitions = [0]
+        
+        number_of_swaps = 0 # count how many times we swapped
+        frontier = 0 # furthest stage visited so far
+        partitions = [0] # partitions visited
+        furthest_swap  = 0
+        count_swaps = 0
         curr = start_idx
         for edg in el.path:
             
@@ -188,17 +206,19 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
                 
                 curr = edg.n1.idx
             
-            if g.nodes[curr].properties["partition"] < frontier:
-                number_of_swaps += (frontier-g.nodes[curr].properties["partition"])
+            if g.nodes[curr].properties["partition"] < frontier: # a swap has occurred 
+                furthest_swap = max((frontier-g.nodes[curr].properties["partition"]),furthest_swap)
+                count_swaps += 1
+                number_of_swaps += (frontier-g.nodes[curr].properties["partition"]) # the distance of the swap
             partitions.append(g.nodes[curr].properties["partition"])
-        if number_of_swaps > 4:
+        if number_of_swaps > 4 or furthest_swap > 2 or count_swaps > 2:
             
             continue
 
 
         for edg in g.nodes[el.idx].incident_edges.values():
             # print(len(g.nodes[el.idx].incident_edges.values()))
-            if edg.directed:
+            if edg.directed: # dealing with directed graphs, we dont care
                 if edg.n1.idx != el.idx:
                     continue
                 if len(el.path) < lng and edg.n2.idx == start_idx:
@@ -218,16 +238,16 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
                 if abs(g.nodes[edg.n2.idx].properties["partition"] - frontier) > 3:
                     continue
                 heapq.heappush(h,a_star_item_modified(el.time + edg.w, el.time  + edg.w,el.idx,edg.n2.idx,edg,False,el.path.copy() + [edg]))
-            else:
+            else: # undirected graphs (our case)
                 if edg.n1.idx == el.idx:
-                    if len(el.path) < lng and edg.n2.idx == start_idx:
+                    if len(el.path) < lng and edg.n2.idx == start_idx: # if we dont have desired path length and it is start - ignore
                         continue
-                    elif len(el.path) == lng and edg.n2.idx == start_idx:
+                    elif len(el.path) == lng and edg.n2.idx == start_idx:  # if desired path length and end node - MUST TAKE IT
                         heapq.heappush(h,a_star_item_modified(el.time + edg.w, el.time + edg.w, el.idx,start_idx,edg,False,el.path.copy() + [edg]))
                         continue
-                    if len(el.path) == lng:
+                    if len(el.path) == lng: # path length has been reached but we are not considering start... continue
                         continue
-                    if number_of_swaps > 3 and g.nodes[edg.n2.idx].properties["partition"] < frontier:
+                    if number_of_swaps > 3 and g.nodes[edg.n2.idx].properties["partition"] < frontier: # we will exceed our budget!
                         continue
                     if visitable_stages[agidx][g.nodes[edg.n2.idx].properties["partition"]] == 0 :
                         # print("cannot visit",edg.n2.idx)
@@ -235,11 +255,11 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
                     if g.nodes[edg.n2.idx].properties["partition"] in partitions:
                         # print("cannot visit",edg.n2.idx,g.nodes[edg.n2.idx].properties["partition"],partitions)
                         continue
-                    if abs(g.nodes[edg.n2.idx].properties["partition"] - frontier) > 3:
+                    if abs(g.nodes[edg.n2.idx].properties["partition"] - frontier) > 3: # skipping more than 3
                         # print("gap too big",frontier,g.nodes[edg.n2.idx].properties["partition"],partitions)
                         continue
                     heapq.heappush(h,a_star_item_modified(el.time + edg.w, el.time + edg.w,el.idx,edg.n2.idx,edg,False,el.path.copy() + [edg]))
-                else:
+                else: # same as before but for other edge end
                     if len(el.path) < lng and edg.n1.idx == start_idx:
                         continue
                     elif len(el.path) == lng and edg.n1.idx == start_idx:

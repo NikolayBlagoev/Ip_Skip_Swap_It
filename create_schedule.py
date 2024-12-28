@@ -7,10 +7,11 @@ from schedulers.graph_partitioning import *
 from schedulers.gcma import *
 import random
 import numpy as np
+from sys import argv
 from schedulers.com_sym import *
 from schedulers.communication_costs import *
-random.seed(20)
-np.random.seed(20)
+random.seed(int(argv[1]))
+np.random.seed(int(argv[1]))
 PAT_LENGTH = 4
 MAX_MB_PER_STAGE = 9
 
@@ -62,7 +63,7 @@ g.fill_incident_edges()
 bst = None 
 score = float("inf")
 # Find best arrangement:
-for _ in range(1):
+for _ in range(5):
     partitions, scores, _ = GCMA(g,partition_sizes=partition_sizes,trails=4000,population_size=100,factor=FACTOR)
     ret = np.argmin(scores)
     if scores[ret] < score:

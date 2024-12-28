@@ -260,60 +260,62 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
 
         if constraints[2] and not flag:
             checked = []
-            for idx,ag in enumerate(sol.speeds):
-                if idx > len(sol.speeds)/4:
+            for ag_idx_consider,ag in enumerate(sol.speeds):
+                if ag_idx_consider > len(sol.speeds)/3:
                     break
-                for k in range(len(g.nodes)):
-                    
-                    
-                    for idx, visit in enumerate(visits_per_node[k]):
-                        if len(checked) > 0:
-                            break
-                        
-                        if visit[0] in checked:
-                            continue
-                        if visit[0] != ag[0]:
-                            continue
-                        for idx2, visit2 in enumerate(visits_per_node[k]):
-                            if visit2[0] in checked:
-                                continue
-                            if idx == idx2:
-                                continue
-                            if visit[0] == visit2[0]:
-                                continue
-                            # print(count_per_node)
-                            # print(visit)
-                            if (visit[1] <= visit2[1] and visit[2] > visit2[1]) or (visit2[1] <= visit[1] and visit2[2] > visit[1]):
-                                flag = True
-                                checked.append(visit[0])
-                                checked.append(visit2[0])
-                                # print("TYPE 3")
-                                # print(visit,visit2,k)
-                                for c in sol.conflicts:
-                                    if c.type != 3:
-                                        continue
-                                    
-                                    # print(c.agidx,c.ndix,c.tmstart,c.tmend)
-                                    if c.agidx == visit[0] and c.ndix == k and c.tmstart == visit2[1] and c.tmend == visit2[2]:
-                                        print("DUPLICATE", visit[0],visit2[1], visit2[2], c.tmstart, c.tmend, k)
-                                        print(visit,visit2)
-                                        visualise_type_3_conflicts(sol)
-                                        exit()
-                                    if c.agidx == visit2[0] and c.ndix == k and c.tmstart == visit[1] and c.tmend == visit[2]:
-                                        print("DUPLICATE", visit2[0],visit[1], visit[2], c.tmstart, c.tmend, k)
-                                        print(visit,visit2)
-                                        visualise_type_3_conflicts(sol)
-                                        exit()
-                                    
-                                conflict_3 = True
-                                if len(conflicts) == 0:
-
-                                    # conflicts.append([Conflict(visit[0],k,visit2[1],visit2[2],3)])  
-                                    conflicts.append([Conflict(visit2[0],k,visit[1],visit[2],3)])
-                                else:
-                                    conflicts[0] += [Conflict(visit[0],k,visit2[1],visit2[2],3)]
-                                    conflicts[1] += [Conflict(visit2[0],k,visit[1],visit[2],3)]
+                if len(checked) > 0:
+                    break
+                for ag_idx_consider2,ag2 in enumerate(sol.speeds):
+                    if ag_idx_consider >= ag_idx_consider2:
+                        continue
+                    if len(checked) > 0:
+                        break
+                    for k in range(len(g.nodes)):
+                        for idx, visit in enumerate(visits_per_node[k]):
+                            if len(checked) > 0:
                                 break
+                            if visit[0] != ag[0]:
+                                continue
+                            for idx2, visit2 in enumerate(visits_per_node[k]):
+                                
+                                if idx == idx2:
+                                    continue
+                                if visit[0] == visit2[0]:
+                                    continue
+                                if visit2[0] != ag2[0]:
+                                    continue
+                                # print(count_per_node)
+                                # print(visit)
+                                if (visit[1] <= visit2[1] and visit[2] > visit2[1]) or (visit2[1] <= visit[1] and visit2[2] > visit[1]):
+                                    flag = True
+                                    checked.append(visit[0])
+                                    checked.append(visit2[0])
+                                    # print("TYPE 3")
+                                    # print(visit,visit2,k)
+                                    for c in sol.conflicts:
+                                        if c.type != 3:
+                                            continue
+                                        
+                                        # print(c.agidx,c.ndix,c.tmstart,c.tmend)
+                                        if c.agidx == visit[0] and c.ndix == k and c.tmstart == visit2[1] and c.tmend == visit2[2]:
+                                            print("DUPLICATE", visit[0],visit2[1], visit2[2], c.tmstart, c.tmend, k)
+                                            print(visit,visit2)
+                                            visualise_type_3_conflicts(sol)
+                                            exit()
+                                        if c.agidx == visit2[0] and c.ndix == k and c.tmstart == visit[1] and c.tmend == visit[2]:
+                                            print("DUPLICATE", visit2[0],visit[1], visit[2], c.tmstart, c.tmend, k)
+                                            print(visit,visit2)
+                                            visualise_type_3_conflicts(sol)
+                                            exit()
+                                        
+                                    conflict_3 = True
+                                    if ag_idx_consider2 < 2:
+
+                                        conflicts.append([Conflict(visit[0],k,visit2[1],visit2[2],3)])  
+                                    
+                                    conflicts.append([Conflict(visit2[0],k,visit[1],visit[2],3)])
+                                
+                                    break
         
 
         if not flag:
