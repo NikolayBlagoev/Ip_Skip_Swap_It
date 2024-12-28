@@ -16,11 +16,12 @@ class DP_Group(object):
         self.group = None
         self.pid = pid
         self.delay_map = delay_map
-        
+        self.partition = 0
         self.g_size = 0
+        self.total_partitions = len(partitions)
         
         self.worst_band = 100
-        for p in partitions:
+        for idx,p in enumerate(partitions):
             if pid in p:
                 # print("IM IN GROUP",p,pid)
                 self.group = new_group(p, backend="gloo")
@@ -30,6 +31,7 @@ class DP_Group(object):
                     b = delay_map[pid][pid2]
                     self.worst_band = min(b,self.worst_band)
                 self.g_size = len(p)
+                self.partition  = 0
             else:
                 new_group(p, backend="gloo")
     

@@ -62,7 +62,7 @@ if __name__ == '__main__':
     partitions = config["partitions"]
     memory = config["memory"]
     send_mbs = 0
-    if setting == "baseline":
+    if setting == "baseline" or setting == "zbh1":
         send_mbs = int(config["baseline-sends"])
         from communications.pp_protocol import PPProtocl as PPProtocl
     elif setting == "ca-partial":
@@ -77,10 +77,11 @@ if __name__ == '__main__':
                     rank_order = idx2
                     break
         world_size += len(v)
-    
+    if setting == "zbh1":
+        from communications.llm_subp_zbh1 import run_p
     assert own_stage != -1
     def commfunc(bid, ndkey):
-        if setting == "baseline":
+        if setting == "baseline" or setting == "zbh1":
             if own_stage == len(partitions) - 1:
                 return None
             if len(partitions[own_stage + 1]) <= rank_order:
