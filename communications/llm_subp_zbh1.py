@@ -64,7 +64,7 @@ class Aggregate:
 
 def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int = 0, stage: int = 0, seq_l: int = 256, n_layers = 4, 
                     batch_size = 8, dmodel = 256, num_heads = 16, memory = 3, process_time = 2, mb_count = 12, cost_map = [],
-                    device = "cuda"):
+                    device = "cuda", MAX_PROCESS = 15):
     manual_seed(0)
     world_size = 0
     for v in partitions:
@@ -85,13 +85,13 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
         net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,n_layers=n_layers, linear_implementation="delayed")
         optimizer = DP_optim(4e-3, net, group, device)
         # with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
-        loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time)
+        loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time,MAX_PROCESS=MAX_PROCESS)
         loc.start()
 
 
 class SubP(object):
     def __init__(self,queue_in: Queue, queue_out: Queue, net, optimizer, node_id = 0, stage = 0, ds = None, vals = None, 
-                    device = "cuda", mb_count = 12, process_time = 2, memory = 3) -> None:
+                    device = "cuda", mb_count = 12, process_time = 2, memory = 3, MAX_PROCESS = 15) -> None:
         self.net = net
         self.process_time = process_time
         self.memory = memory
@@ -106,6 +106,7 @@ class SubP(object):
         self.update_delta = 0
         self.buffer_out = {}
         self.receives = []
+        self.MAX_PROCESS = MAX_PROCESS
         self.processed = 0
         self.iteration = 0
         self.mb_count = mb_count
@@ -212,6 +213,7 @@ class SubP(object):
                         log.write(f"Processing forward to {task.to} {time()}\n")
                     x = pickle.loads(task.data)
                     self.memory -= 1
+                    self.processed += 1
                     with no_grad():
                         x = x.to(self.device)
                     x.requires_grad = True
@@ -248,7 +250,7 @@ class SubP(object):
                     tm2 = time()
                     if tm2 - tm1 < 0.75*self.process_time:
                         sleep(0.75*self.process_time - (tm2 - tm1))
-                    if len(WeightStore.cache)/self.update_delta > min(self.optimizer.dp_group.group,self.MAX_MEM):
+                    if self.MAX_PROCESS - len(WeightStore.cache)/self.update_delta > min(self.optimizer.dp_group.group,self.MAX_MEM):
                         tm1 = time()
                         for i in range(self.update_delta):
                             
