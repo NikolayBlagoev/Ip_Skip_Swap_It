@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     communication_distribution = argv[3]
     loop = asyncio.new_event_loop()
-    with open("communication_4_samples_llama_1_5b", 'r') as file:
+    with open("communication_4_samples_llama_1_5b.json", 'r') as file:
         config = json.load(file)
     def delay_map(currid,otherid):
         p1 = config["locations"][currid]
