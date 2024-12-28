@@ -22,6 +22,12 @@ batch_size = 4
 dmodel = 2048
 num_heads = 16
 
+# COMMENT OUT:
+seq_l = 256
+n_layers = 2
+batch_size = 8
+dmodel = 288
+num_heads = 6
 
 if __name__ == '__main__':
     curr_id = int(argv[1])
