@@ -96,21 +96,21 @@ class ComNode(object):
 
             elif self.ndid in mb.invpath:
                 # print("BACK")
-                self.processed.append((mb.tm, mb.tm + 2*self.comp, mb.back, mb.uniqid))
+                self.processed.append((mb.tm, mb.tm + 1.5*self.comp, mb.back, mb.uniqid))
 
-                self.received_sent[mb.uniqid] = (mb.tm, mb.tm + 2*self.comp)
+                self.received_sent[mb.uniqid] = (mb.tm, mb.tm + 1.5*self.comp)
                 nxt = mb.invpath[self.ndid]
                 self.memory += 1
                 # print(self.ndid, "to",nxt)
                 tmp = deepcopy(mb)
                 tmp.back = True
-                tmp.tm = tmp.tm + 2*self.comp + dl[self.ndid][nxt]
+                tmp.tm = tmp.tm + 1.5*self.comp + dl[self.ndid][nxt]
                 nds[nxt].receive(tmp)
             else:
-                # print(self.ndid,"RECEIVED")
-                self.processed.append((mb.tm, mb.tm + 2*self.comp, mb.back, mb.uniqid))
+                # print(self.ndid,"RECEIVED BACK",mb.tm)
+                self.processed.append((mb.tm, mb.tm + 1.5*self.comp, mb.back, mb.uniqid))
 
-                self.received_sent[mb.uniqid] = (mb.tm, mb.tm + 2*self.comp)
+                self.received_sent[mb.uniqid] = (mb.tm, mb.tm + 1.5*self.comp)
                 self.memory += 1
             for idx2,mb2 in enumerate(self.received):
                 if idx2 == idx:
@@ -134,6 +134,7 @@ def run_simulation(nds, partitions, cost_matrix):
     #     print(nd,"received",v.received_sent)
     for nd in partitions[0]:    
         # print(nd,"received", len(nds[nd].received_sent))
+        # print(nds[nd].received_sent)
         for v in nds[nd].received_sent.values():
             
             largest = max(v[1],largest)

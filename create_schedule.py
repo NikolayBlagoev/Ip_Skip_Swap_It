@@ -5,10 +5,22 @@ from schedulers.a_star_modified import Agent
 from schedulers.CBS import CBS, CBS_item
 from schedulers.graph_partitioning import *
 from schedulers.gcma import *
+import random
+import numpy as np
 from schedulers.com_sym import *
 from schedulers.communication_costs import *
-NUMBER_OF_NODES = 20
+random.seed(19)
+np.random.seed(19)
+PAT_LENGTH = 4
+MAX_MB_PER_STAGE = 9
 
+LAYERS_PER_DEVICE = 4
+SAMPLES_IN_MB = 4
+MB_COUNT = 9
+NUMBER_OF_NODES = 20
+DP_SIZE_IN_BYTES = 1346446748
+MB_SIZE_IN_BYTES = 33554858
+FACTOR = DP_SIZE_IN_BYTES/(MB_SIZE_IN_BYTES*SAMPLES_IN_MB*MB_COUNT)
 partition_sizes = [5,3,3,3,3,3] # Number of devices per partition
 assert sum(partition_sizes) == NUMBER_OF_NODES
 memory = 3 # memory per device
@@ -36,11 +48,12 @@ cost_matrix = [[0 for _ in range(len(node_list))] for _ in range(len(node_list))
 
 wm = [0 for _ in range(len(node_list))]
 for x in range(len(node_list)):
-    wm[x] = computations[node_list[x]]
+    wm[x] = computations[node_list[x]]*LAYERS_PER_DEVICE*SAMPLES_IN_MB
+    
     for y in range(len(node_list)):
         if x == y:
             continue
-        cost_matrix[x][y] = delay_map(node_list[x],node_list[y],)
+        cost_matrix[x][y] = delay_map(node_list[x],node_list[y],sz=MB_SIZE_IN_BYTES*SAMPLES_IN_MB)
 
 g = Graph(0)
 output = {}
@@ -49,8 +62,8 @@ g.fill_incident_edges()
 bst = None 
 score = float("inf")
 # Find best arrangement:
-for _ in range(5):
-    partitions, scores, _ = GCMA(g,partition_sizes=partition_sizes,trails=4000,population_size=100)
+for _ in range(1):
+    partitions, scores, _ = GCMA(g,partition_sizes=partition_sizes,trails=4000,population_size=100,factor=FACTOR)
     ret = np.argmin(scores)
     if scores[ret] < score:
         score = scores[ret]
@@ -61,14 +74,17 @@ ret = bst
 
 output["partitions"] = ret
 output["GCMAscore"] = score
-
+output["locations"] = node_list
+MAIN_WM = wm
 nds = {}
 for idx in range(len(node_list)):
-    nds[idx] = ComNode(computations[node_list[idx]],idx,3)
-
+    nds[idx] = ComNode(MAIN_WM[idx],idx,3)
+output["baseline-sends"] = MB_COUNT + (partition_sizes[0]-partition_sizes[1])*MB_COUNT/partition_sizes[1]
+output["ours-sends"] = MB_COUNT
 for num,idx in enumerate(ret[0]):
-    if num >= 3:
+    if num >= partition_sizes[1]:
         break
+    
     for k in range(5):
         path = {}
         for p in range(1,len(ret)):
@@ -77,36 +93,14 @@ for num,idx in enumerate(ret[0]):
         nds[idx].receive(mb)
 output["baseline-expected-time"] = run_simulation(nds,ret,cost_matrix)
 print("EXPECTED TIME STANDARD",output["baseline-expected-time"])
+
 tmp = []
 for idx, p in enumerate(ret):
     for nd in p:
         tmp.append(nd)
         g.nodes[nd].properties["partition"] = idx
 tmp.sort()
-# print(ret)
-from schedulers.gcma_modified import GCMA_modified
 
-# new_g = [[float("inf") for _ in range(len(g.nodes) * memory)] for _ in range(len(g.nodes) * memory)]
-# new_w = [0] * (len(g.nodes) * memory)
-# for x in range(len(g.nodes) * memory):
-#     new_w[x] = g._wm[x//memory]
-#     for y in range(len(g.nodes) * memory):
-#         if x == y:
-#             continue
-#         if g.nodes[x//memory].properties["partition"] == g.nodes[y//memory].properties["partition"]:
-#             continue
-#         if abs(g.nodes[x//memory].properties["partition"] - g.nodes[y//memory].properties["partition"]) > 2:
-#             continue
-#         new_g[x][y] = g._cost_matrix[x//memory][y//memory]
-# large = Graph(1)
-# large.add_cost_matrix(new_g,new_w)
-# for k,v in large.nodes.items():
-#     v.properties["partition"] = g.nodes[k//memory].properties["partition"]
-
-
-# ret = GCMA_modified(large,partition_sizes=szs)
-# print(ret)
-# exit()
 
 # COLLISION AWARE:
 agents = []
@@ -117,7 +111,7 @@ for num,idx in enumerate(ret[0]):
         agents.append(Agent(k + 3*num, idx, k*wm[idx]))
 
 # Run CBS
-solutions: CBS_item = CBS(g,agents,lambda x1,x2: cost_matrix[x1][x2],ret)
+solutions: CBS_item = CBS(g,agents,lambda x1,x2: cost_matrix[x1][x2],ret,path_l=PAT_LENGTH,memory=memory,mb_per_stage_max=MAX_MB_PER_STAGE)
 visits_per_node = {}
 for ag_sol in solutions.solution:
 
@@ -135,7 +129,7 @@ output["ca-processing-order"] = visits_per_node
 
 nds = {}
 for idx in range(len(node_list)):
-    nds[idx] = ComNode(computations[node_list[idx]],idx,3)
+    nds[idx] = ComNode(MAIN_WM[idx],idx,3)
 
 paths = {}
 for ag in solutions.solution:
@@ -160,10 +154,10 @@ for ag in solutions.solution:
     nds[agents[ag[2]].start_idx].receive(tmp)
 visits_per_node = {}
 
-run_simulation(nds,ret,cost_matrix)
+output["ca-expected-time"] = run_simulation(nds,ret,cost_matrix)
 for k,v in nds.items():
     visits_per_node[k] = len(v.received_sent)
-output["ca-expected-time"] = solutions.dist
+# output["ca-expected-time"] = solutions.dist
 output["ca-mb-per-node"] = visits_per_node
 output["ca-paths"] = paths
 print("EXPECTED TIME WITH COLLISION AWARENESS:", output["ca-expected-time"])
@@ -174,7 +168,7 @@ for num,idx in enumerate(ret[0]):
     for k in range(3):
         agents.append(Agent(k + 3*num, idx, k*wm[idx]))
 
-solutions: CBS_item = CBS(g,agents,lambda x1,x2: cost_matrix[x1][x2],ret,constraints=[True,True,False])
+solutions: CBS_item = CBS(g,agents,lambda x1,x2: cost_matrix[x1][x2],ret,constraints=[True,True,False],path_l=PAT_LENGTH,memory=memory,mb_per_stage_max=MAX_MB_PER_STAGE)
 visits_per_node = {}
 for ag_sol in solutions.solution:
 
@@ -188,7 +182,7 @@ for v in visits_per_node.values():
 output["non-ca-processing-order"] = visits_per_node
 nds = {}
 for idx in range(len(node_list)):
-    nds[idx] = ComNode(computations[node_list[idx]],idx,3)
+    nds[idx] = ComNode(MAIN_WM[idx],idx,3)
 
 paths = {}
 for ag in solutions.solution:

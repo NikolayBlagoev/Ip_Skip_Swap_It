@@ -62,26 +62,26 @@ class Aggregate:
     epoch: int
 
 def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int = 0, stage: int = 0, seq_l: int = 256, n_layers = 4, 
-                    batch_size = 8, dmodel = 256, multiple_of = 4, num_heads = 16, memory = 3, process_time = 2, mb_count = 12,
+                    batch_size = 8, dmodel = 256, num_heads = 16, memory = 3, process_time = 2, mb_count = 12, cost_map = [],
                     device = "cuda"):
     manual_seed(0)
     world_size = 0
     for v in partitions:
         world_size += len(v)
-    group = initialise_communication(partitions,node_id, main_addr, world_size)
+    group = initialise_communication(partitions,node_id, main_addr, world_size,desired_time)
     
     if stage == 0:
         tkns = SPTokenizer()
-        ts = TinyStories(tkns,batch_size = batch_size, seq_l=seq_l)
+        ts = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l)
         vals = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l, split = "train")
-        net = LLamaFirstStage(tkns.vocab_size, dmodel, num_heads, n_layers, multiple_of = multiple_of, ctx_size= seq_l)
+        net = LLamaFirstStage(tkns.vocab_size, dmodel, num_heads, n_layers, ctx_size= seq_l)
         
         optimizer = DP_optim(4e-3, net, group, device)
         with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
             loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, mb_count=mb_count, memory = memory,process_time=process_time)
             loc.start()
     else:
-        net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,multiple_of=multiple_of,n_layers=n_layers)
+        net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,n_layers=n_layers)
         optimizer = DP_optim(4e-3, net, group, device)
         # with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
         loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time)
@@ -159,8 +159,8 @@ class SubP(object):
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
-                    # if tm2 - tm1 < self.process_time:
-                    #     sleep(self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < self.process_time:
+                        sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     self.memory -= 1
                     
@@ -195,8 +195,8 @@ class SubP(object):
                     
                     loss.backward()
                     tm2 = time()
-                    # if tm2 - tm1 < 1.5*self.process_time:
-                    #     sleep(1.5*self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < self.process_time/4:
+                        sleep(self.process_time/4 - (tm2 - tm1))
                     ret = x.grad
                     ret = ret.to("cpu")
                     
@@ -219,8 +219,8 @@ class SubP(object):
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
-                    # if tm2 - tm1 < self.process_time:
-                    #     sleep(self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < self.process_time:
+                        sleep(self.process_time - (tm2 - tm1))
                     ret = x.to("cpu")
                     
                     self.queue_out.put(Forward(task.tag, task.frm, task.to, x.shape[0], x.shape[1], x.shape[2], task.originator, pickle.dumps(ret)), True)
@@ -241,8 +241,8 @@ class SubP(object):
                     
                     inp_batch.backward(output)
                     tm2 = time()
-                    # if tm2 - tm1 < 2*self.process_time:
-                    #     sleep(2*self.process_time - (tm2 - tm1))
+                    if tm2 - tm1 < 1.5*self.process_time:
+                        sleep(1.5*self.process_time - (tm2 - tm1))
                     self.memory += 1
                     
                     if task.to != -1:
@@ -278,6 +278,7 @@ class SubP(object):
                     with open(f"log_stats_proj_2_{self.node_id}.txt", "a") as log:
                         log.write(f"FINISHED AGGREGATING NOW IN {self.iteration} {time()}\n")
                     # save model
+                    
                     if self.iteration % 2000 == 0:
                        save(self.net.state_dict(), f"{(self.epoch//2000) % 5}_{self.node_id}.pth") 
                     cuda.empty_cache()

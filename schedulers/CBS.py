@@ -55,8 +55,18 @@ def count_conflicts(g, sol, count_per_node):
     for k,v in g.nodes.items():    
         count_per_node[k].clear()
     return count_col
+
+def visualise_type_3_conflicts(sol):
+    for ag_sol in sol.solution:
+                                            
+        print(ag_sol[0],ag_sol[2])
+                                            
+        for nd in ag_sol[1]:
+            print(nd)
+    return
 import itertools
-def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [False, True, True], path_l = 4):
+
+def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [False, True, True], path_l = 4, memory = 3, mb_per_stage_max = 9):
     h: List[CBS_item] = []
     heapq.heapify(h)
     visited = dict()
@@ -68,7 +78,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
     visited: Dict[str,bool] = dict()
    
     curr = time.time()
-    # a_star_modified(g,agents[0].start_idx,heuristic,agents[0].idx,agents[0].dt,conflicts,visitable,visitable_stages,6)
+    
     results = Parallel(n_jobs=len(agents))(delayed(a_star_modified)(g,a.start_idx, heuristic, a.idx, a.dt, conflicts, visitable, visitable_stages, path_l) for a in agents)
     print(time.time()-curr)
     cost = 0
@@ -94,8 +104,8 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
             visits_per_node[k].clear()
         for v in range(len(partitions)):
             count_per_partitions[v].clear()
-        if len(solutions) == 32:
-            print(32,"viable solutions found")
+        if len(solutions) == 64:
+            print(len(solutions),"viable solutions found")
             h = []
             heapq.heapify(h)
             for s in solutions:
@@ -104,18 +114,18 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
             check_1 = True
             
         sol = heapq.heappop(h)
-        if sol.dist - last_value < -0.001:
-            print(sol.dist,last_value)
-            for c in sol.conflicts:
-                if c.type != 3:
-                    continue
+        # if sol.dist - last_value < -0.001:
+        #     print(sol.dist,last_value)
+        #     for c in sol.conflicts:
+        #         if c.type != 3:
+        #             continue
                                     
-                print(c.agidx,c.ndix,c.tmstart,c.tmend)
-            for ag_sol in sol.solution:
-                print(ag_sol[0])
-                for nd in ag_sol[1]:
-                    print(ag_sol[2],nd)
-            assert sol.dist >= last_value
+        #         print(c.agidx,c.ndix,c.tmstart,c.tmend)
+        #     for ag_sol in sol.solution:
+        #         print(ag_sol[0])
+        #         for nd in ag_sol[1]:
+        #             print(ag_sol[2],nd)
+        #     assert sol.dist >= last_value
         last_value = sol.dist
         # print(sol.dist)
         # print(sol.visitable_stages)
@@ -160,7 +170,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                 
                 if k == 0:
                     continue
-                if len(count_per_partitions[k]) > 9:
+                if len(count_per_partitions[k]) > mb_per_stage_max:
                     flag = True
                     # print(k)
                     count_per_partitions[k].sort(key = lambda el: el[1])
@@ -175,7 +185,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                     # print("EXCLUDE", exclude_agents)
                     if len(exclude_agents) == len(agents):
                         continue
-                    for comb in itertools.combinations(count_per_partitions[k][ -(len(count_per_partitions[k]) - (6-len(exclude_agents))):], ttl_count-9):
+                    for comb in itertools.combinations(count_per_partitions[k][:ttl_count-6], ttl_count-9):
                         if len(conflicts) > 2:
                             continue
                         tmp = []
@@ -208,7 +218,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                     break
                 if g.nodes[k].properties["partition"] == 0:
                     continue
-                if len(count_per_node[k]) > 3:
+                if len(count_per_node[k]) > memory:
                     flag = True
                     # print(k)
                     this_partition = g.nodes[k].properties["partition"]
@@ -222,7 +232,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                                 p_0.append((l[0],l[3],l[4]))
                             p_1.append(p)
                     # if len(p_0)
-                    cm = make_bipartite_graph_CBS(g,p_0,p_1,sol.conflicts,agents,sol.visitable)
+                    cm = make_bipartite_graph_CBS(g,p_0,p_1,sol.conflicts,agents,sol.visitable,memory)
                     try:
                         ret = bipartite_matching(cm)
                     except ValueError:
@@ -250,13 +260,14 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
 
         if constraints[2] and not flag:
             checked = []
-            for ag in sol.speeds:
-                
+            for idx,ag in enumerate(sol.speeds):
+                if idx > len(sol.speeds)/4:
+                    break
                 for k in range(len(g.nodes)):
                     
                     
                     for idx, visit in enumerate(visits_per_node[k]):
-                        if len(checked) > 2:
+                        if len(checked) > 0:
                             break
                         
                         if visit[0] in checked:
@@ -286,28 +297,18 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                                     if c.agidx == visit[0] and c.ndix == k and c.tmstart == visit2[1] and c.tmend == visit2[2]:
                                         print("DUPLICATE", visit[0],visit2[1], visit2[2], c.tmstart, c.tmend, k)
                                         print(visit,visit2)
-                                        for ag_sol in sol.solution:
-                                            
-                                            print(ag_sol[0],ag_sol[2])
-                                            # print(len(ag_sol[1]))
-                                            for nd in ag_sol[1]:
-                                                print(nd)
+                                        visualise_type_3_conflicts(sol)
                                         exit()
                                     if c.agidx == visit2[0] and c.ndix == k and c.tmstart == visit[1] and c.tmend == visit[2]:
                                         print("DUPLICATE", visit2[0],visit[1], visit[2], c.tmstart, c.tmend, k)
                                         print(visit,visit2)
-                                        for ag_sol in sol.solution:
-                                            
-                                            print(ag_sol[0],ag_sol[2])
-                                            # print(len(ag_sol[1]))
-                                            for nd in ag_sol[1]:
-                                                print(nd)
+                                        visualise_type_3_conflicts(sol)
                                         exit()
                                     
                                 conflict_3 = True
                                 if len(conflicts) == 0:
 
-                                    conflicts.append([Conflict(visit[0],k,visit2[1],visit2[2],3)])  
+                                    # conflicts.append([Conflict(visit[0],k,visit2[1],visit2[2],3)])  
                                     conflicts.append([Conflict(visit2[0],k,visit[1],visit[2],3)])
                                 else:
                                     conflicts[0] += [Conflict(visit[0],k,visit2[1],visit2[2],3)]

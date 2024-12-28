@@ -63,19 +63,20 @@ DELAY_BANDWIDTHS = {
     "Amsterdam-London":(7,0.150),
     "Amsterdam-Tokyo":(278.65,0.13),
 }
+# measured per sample per layer:
 COMPUTATIONAL_COST = {
-    "Sofia": 5,
-    'Singapore': 4.5, 
-    'Ireland': 4.2,
-    'Sydney': 3.6,
-    'Frankfurt': 4.6, 
-    'Seoul': 5.25, 
-    'Oregon': 4.4, 
-    'Frankfurt': 4.6, 
-    'Ohio': 4, 
-    'Tokyo': 4.9, 
-    'Amsterdam': 3.9, 
-    'Virginia': 4.1
+    "Sofia": 0.6,
+    'Singapore': 0.52, 
+    'Ireland': 0.41,  
+    'Sydney': 0.47,
+    'Frankfurt': 0.42, 
+    'Seoul':  0.44,  
+    'Oregon': 0.55, 
+    'Frankfurt': 0.48, 
+    'Ohio': 0.54,
+    'Tokyo': 0.38,
+    'Amsterdam': 0.54, 
+    'Virginia': 0.48
 
 }
 def get_locations(setting = "geo-distributed"):
@@ -110,3 +111,4 @@ def delay_map(loc1,loc2, sz = 250*6291908):
     else:
         ret = (1,100)
     return ret[0]/1000 + sz/(1024**3 * ret[1])
+

@@ -11,15 +11,17 @@ from deccom.protocols.streamprotocol import StreamProtocol
 from communications.llm_subp import run_p
 from multiprocessing import Lock, Process, Queue, current_process
 import json
+from schedulers.communication_costs import delay_map
+from deccom.protocols.delayprotocol import DelayProtocol
 from pprint import pprint
-from communications.pp_protocol import PPProtocl
-from schedulers.communication_costs import *
-seq_l = 256
-n_layers = 2
-batch_size = 8
-dmodel = 288
-num_heads = 6
-multiple_of = 32
+
+from schedulers.communication_costs import DELAY_BANDWIDTHS
+seq_l = 4096
+n_layers = 4
+batch_size = 4
+dmodel = 2048
+num_heads = 16
+
 
 if __name__ == '__main__':
     curr_id = int(argv[1])
@@ -27,20 +29,39 @@ if __name__ == '__main__':
 
     communication_distribution = argv[3]
     loop = asyncio.new_event_loop()
-    with open("communication.json", 'r') as file:
+    with open("communication_4_samples_llama_1_5b", 'r') as file:
         config = json.load(file)
-    
-    loc = id_to_loc(curr_id, communication_distribution)
+    def delay_map(currid,otherid):
+        p1 = config["locations"][currid]
+        p2 = config["locations"][otherid]
+        if DELAY_BANDWIDTHS.get(p1+"-"+p2) != None:
+            ret = DELAY_BANDWIDTHS.get(p1+"-"+p2)
+        elif DELAY_BANDWIDTHS.get(p2+"-"+p1) != None:
+            ret = DELAY_BANDWIDTHS.get(p2+"-"+p1)
+        else:
+            ret = (1,100)
+
+    return (ret[0],ret[1])
+    loc = config["locations"][curr_id]
+    world = len(config["locations"])
+    cost_map = [[0 for _ in range(world)] for _ in range(world)]
+    for y in range(world):
+        for x in range(world):
+            cost_map[y][x] = delay_map(y,x)[1]
     print(loc)
-    compute_time = get_computations(communication_distribution)[loc]
+    compute_time = get_computations(communication_distribution)[loc]*n_layers*batch_size
     world_size = 0
     own_stage = -1
     rank_order = 0
     partitions = config["partitions"]
     memory = config["memory"]
-    send_mbs = 2
+    send_mbs = 0
     if setting == "baseline":
-        send_mbs = config["baseline-mb-count"]
+        send_mbs = config["baseline-sends"]
+        from communications.pp_protocol import PPProtocl as PPProtocl
+    elif setting == "ca-partial":
+        send_mbs = config["ours-sends"]
+        from communications.pp_protocol import PPProtocl as PPProtocl
     for idx, v in enumerate(partitions):
         if curr_id in v:
             assert own_stage == -1
@@ -72,6 +93,8 @@ if __name__ == '__main__':
         gossip.set_lower(protocol)
         stream = StreamProtocol(False)
         stream.set_lower(gossip)
+        delayer= DelayProtocol(delay_map=delay_map)
+        delayer.set_lower(stream)
         n = Peer(("127.0.0.1", 10015))
         if curr_id != 0:
             gossip.bootstrap_peers.append(n)
@@ -83,9 +106,9 @@ if __name__ == '__main__':
         queue_in = Queue(1024)
         queue_out = Queue(1024)
         
-        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,multiple_of,num_heads,memory,compute_time,send_mbs, "cuda")) 
+        subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,num_heads,memory,compute_time,send_mbs,cost_map, "cuda")) 
         trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
-        trainingp.set_lower(stream)
+        trainingp.set_lower(delayer)
         subprocess.start()
         
         me = StreamNode(my_peer , trainingp,ip_addr="127.0.0.1", port = 10015 if curr_id == 0 else port)

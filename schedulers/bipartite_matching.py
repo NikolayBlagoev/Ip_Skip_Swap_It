@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from .graph import *
 
 from scipy.optimize import linear_sum_assignment
-def make_bipartite_graph_CBS(g: Graph, p_0, p_1, agents, conflicts, visitable):
+def make_bipartite_graph_CBS(g: Graph, p_0, p_1, agents, conflicts, visitable,memory):
     r = 3*len(p_1)-len(p_0)
     
     cost_matrix = [[float("inf") for _ in range(3*len(p_1))] for _ in range(r+len(p_0))]
@@ -16,14 +16,14 @@ def make_bipartite_graph_CBS(g: Graph, p_0, p_1, agents, conflicts, visitable):
                 if visitable[nd[0]][nd2] == 0:
                     continue
 
-                for k in range(3):
-                    cost_matrix[idx1][3*idx2 + k] = g._cost_matrix[nd[1]][nd2]
+                for k in range(memory):
+                    cost_matrix[idx1][memory*idx2 + k] = g._cost_matrix[nd[1]][nd2]
     for idx1 in range(len(p_0),r+len(p_0)):
         for idx2,nd2 in enumerate(p_1):
                 
 
-                for k in range(3):
-                    cost_matrix[idx1][3*idx2 + k] = 0
+                for k in range(memory):
+                    cost_matrix[idx1][memory*idx2 + k] = 0
     return cost_matrix
 def make_bipartite_graph(g: Graph, p_0, p_1, visitable = None):
     r = max(len(p_1),len(p_0))

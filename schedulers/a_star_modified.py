@@ -116,13 +116,13 @@ def a_star_modified(g: Graph, start_idx, heuristic, agidx, dt = 0, conflicts: Li
                     
                     if c.agidx == agidx and c.ndix == el:
                         tmp_m = max_offset
-                        max_offset = max(conflict_check(c,max_offset,2*g.nodes[el].weight),max_offset)
+                        max_offset = max(conflict_check(c,max_offset,1.5*g.nodes[el].weight),max_offset)
                         if max_offset > tmp_m:
                             flg = True
             
             t = max_offset
             
-            t += 2*g.nodes[el].weight
+            t += 1.5*g.nodes[el].weight
             node_visits.append((el,max_offset,t))
             if edg:
                 t+=edg.w
