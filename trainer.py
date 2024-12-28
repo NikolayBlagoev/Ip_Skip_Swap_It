@@ -90,7 +90,10 @@ if __name__ == '__main__':
             return partitions[own_stage + 1][rank_order]
         elif setting == "ca-partial":
             # ca-paths
-            b_path = config["ca-paths"][str(bid)]
+            b1 = bid % config["ours-sends"]
+            b2 = bid // config["ours-sends"]
+            b1 = b1 % config["memory"]
+            b_path = config["ca-paths"][str(b2*config["memory"] + b1)]
             if ndkey in b_path:
                 return b_path[ndkey]
             else:
