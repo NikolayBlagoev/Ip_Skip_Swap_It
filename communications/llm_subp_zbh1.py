@@ -78,7 +78,8 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
         net = LLamaFirstStage(tkns.vocab_size, dmodel, num_heads, n_layers, ctx_size= seq_l, linear_implementation="delayed")
         
         optimizer = DP_optim(4e-3, net, group, device)
-       
+        with open(f"log_stats_proj_2_{node_id}.txt", "a") as log:
+            log.write(f"Optimizer ready!\n")
         loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, mb_count=mb_count, memory = memory,process_time=process_time)
         loc.start()
     else:
