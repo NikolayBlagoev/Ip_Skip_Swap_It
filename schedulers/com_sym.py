@@ -83,15 +83,15 @@ class ComNode(object):
                 nds[nxt].receive(tmp)
             elif mb.one_time:
                 # print("one time send it back")
-                self.processed.append((mb.tm, mb.tm + self.comp, mb.back, mb.uniqid))
+                self.processed.append((mb.tm, mb.tm + self.comp/4, mb.back, mb.uniqid))
 
-                self.received_sent[mb.uniqid] = (mb.tm, mb.tm + self.comp)
+                self.received_sent[mb.uniqid] = (mb.tm, mb.tm + self.comp/4)
                 nxt = mb.first_node
                 tmp = deepcopy(mb)
                 tmp.first_node = self.ndid
                 tmp.back = True
                 tmp.one_time = False
-                tmp.tm = tmp.tm + self.comp + dl[self.ndid][nxt]
+                tmp.tm = tmp.tm + self.comp/4 + dl[self.ndid][nxt]
                 nds[nxt].receive(tmp)
 
             elif self.ndid in mb.invpath:
@@ -120,7 +120,7 @@ class ComNode(object):
                 
                 v = self.received_sent[mb.uniqid]
                 if v[0] <= mb2.tm and v[1] > mb2.tm:
-                    # print("collision")
+                    # print("collision", mb2.uniqid,"postponed to",v[1],"from",mb2.tm,"period start",v[0], "on",self.ndid)
                     self.collisions.append((mb2.uniqid,mb.uniqid,mb2.tm,v[1],mb2.back,mb.back,tmunit))
                     mb2.tm = v[1]
             mb.processed = True

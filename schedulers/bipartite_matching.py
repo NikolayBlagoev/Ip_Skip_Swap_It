@@ -4,7 +4,7 @@ import numpy as np
 import heapq
 from dataclasses import dataclass, field
 from .graph import *
-
+import itertools
 from scipy.optimize import linear_sum_assignment
 def make_bipartite_graph_CBS(g: Graph, p_0, p_1, agents, conflicts, visitable,memory):
     r = 3*len(p_1)-len(p_0)
@@ -17,7 +17,8 @@ def make_bipartite_graph_CBS(g: Graph, p_0, p_1, agents, conflicts, visitable,me
                     continue
 
                 for k in range(memory):
-                    cost_matrix[idx1][memory*idx2 + k] = g._cost_matrix[nd[1]][nd2]
+                    cost_matrix[idx1][memory*idx2 + k] = nd[4] - (g._cost_matrix[nd[1]][nd[3]] + g._cost_matrix[nd[2]][nd[3]] + g._wm[nd[3]]) + g._cost_matrix[nd[1]][nd2] + g._cost_matrix[nd[2]][nd2] + g._wm[nd2]
+                    
     for idx1 in range(len(p_0),r+len(p_0)):
         for idx2,nd2 in enumerate(p_1):
                 
@@ -44,6 +45,24 @@ def make_bipartite_graph(g: Graph, p_0, p_1, visitable = None):
         for idx2,nd2 in enumerate(p_0):
             cost_matrix[idx1][idx2] = 0
     return cost_matrix
+
+def minimise_max(cost_matrix, curr_max):
+    x = len(cost_matrix)
+    curr_best = float("inf")
+    curr_best_sol = None
+    for comb in itertools.permutations(range(x)):
+        max_cost = 0
+        
+        for idx,el in enumerate(comb):
+            max_cost = max(cost_matrix[el][idx],max_cost) 
+        if max_cost <= curr_max:
+            return comb
+        if curr_best > max_cost:
+            curr_best = max_cost
+            curr_best_sol = comb
+    return curr_best_sol
+
+
 
 
 def bipartite_matching(cost_matrix):

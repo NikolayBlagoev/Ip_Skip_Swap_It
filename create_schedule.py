@@ -10,7 +10,7 @@ import numpy as np
 from sys import argv
 from schedulers.com_sym import *
 from schedulers.communication_costs import *
-random.seed(int(argv[1]))
+random.seed(int(argv[1])) # recommended is 3
 np.random.seed(int(argv[1]))
 PAT_LENGTH = 4
 MAX_MB_PER_STAGE = 9
@@ -19,7 +19,10 @@ LAYERS_PER_DEVICE = 4
 SAMPLES_IN_MB = 4
 MB_COUNT = 9
 NUMBER_OF_NODES = 20
+# 1.5B:
+
 DP_SIZE_IN_BYTES = 1346446748
+# 1 sample activation size:
 MB_SIZE_IN_BYTES = 33554858
 FACTOR = DP_SIZE_IN_BYTES/(MB_SIZE_IN_BYTES*SAMPLES_IN_MB*MB_COUNT)
 partition_sizes = [5,3,3,3,3,3] # Number of devices per partition
@@ -63,7 +66,7 @@ g.fill_incident_edges()
 bst = None 
 score = float("inf")
 # Find best arrangement:
-for _ in range(5):
+for _ in range(1):
     partitions, scores, _ = GCMA(g,partition_sizes=partition_sizes,trails=4000,population_size=100,factor=FACTOR)
     ret = np.argmin(scores)
     if scores[ret] < score:
@@ -163,6 +166,9 @@ output["ca-mb-per-node"] = visits_per_node
 output["ca-paths"] = paths
 print("EXPECTED TIME WITH COLLISION AWARENESS:", output["ca-expected-time"])
 
+
+
+# non-ca-aware
 agents = []
 for num,idx in enumerate(ret[0]):
 
@@ -214,6 +220,90 @@ for k,v in nds.items():
     visits_per_node[k] = len(v.received_sent)
 output["non-ca-mb-per-node"] = visits_per_node
 output["non-ca-paths"] = paths
+
+
+
+# COLLISION AWARE:
+agents = []
+paths_random = []
+import itertools
+possible_paths = iter(list(itertools.combinations([i+1 for i in range(len(partition_sizes)-1)],PAT_LENGTH-1)))
+# print(possible_paths)
+
+visited = {}
+stage_visits = {}
+for num,idx in enumerate(output["partitions"][0]):
+   
+    for k in range(3):
+        _tmp = []
+        _tmp.append(idx)
+        flag = True
+        while flag:
+            flag = False
+            try:
+                _pth = next(possible_paths)
+            except StopIteration:
+                possible_paths = iter(list(itertools.combinations([i+1 for i in range(len(partition_sizes)-1)],PAT_LENGTH-1)))
+                _pth = next(possible_paths)
+            
+            for p in _pth:
+                if p in stage_visits and stage_visits[p] >= 9:
+                    flag = True
+                    for p2 in _pth:
+                        if p2 == p:
+                            break
+                        stage_visits[p2] = stage_visits[p2] - 1
+                    
+                    # print(stage_visits)
+                    break
+                if p not in stage_visits:
+                    stage_visits[p] = 1
+                else:
+                    stage_visits[p] = stage_visits[p] + 1
+        for p in _pth:
+            while True:
+                to_add = random.choice(output["partitions"][p])
+                
+                if to_add not in visited:
+                    visited[to_add] = 0
+                elif visited[to_add] >= 3:
+                    # print(visited, ret[p])
+                    continue
+                _tmp.append(to_add)
+                visited[to_add] = visited[to_add] + 1
+                break
+        paths_random.append((k + 3*num,_tmp))
+print(paths_random)
+
+nds = {}
+for idx in range(len(node_list)):
+    nds[idx] = ComNode(MAIN_WM[idx],idx,3)
+
+paths = {}
+for ag in paths_random:
+    path = {}
+    prv = None
+    for t in ag[1]:
+        if prv == None:
+            prv = t
+            continue
+        
+        path[prv] = t
+        prv = t
+    
+    tmp = MB(ag[0],path,ag[1][0])
+    paths[ag[0]] = path
+    nds[ag[1][0]].receive(tmp)
+visits_per_node = {}
+
+output["random-expected-time"] = run_simulation(nds,ret,cost_matrix)
+for k,v in nds.items():
+    visits_per_node[k] = len(v.received_sent)
+# output["ca-expected-time"] = solutions.dist
+output["random-mb-per-node"] = visits_per_node
+output["random-paths"] = paths
+print("EXPECTED TIME RANDOM:", output["random-expected-time"])
+
 # save to JSON
 import json
 with open("communication.json","w") as fd:

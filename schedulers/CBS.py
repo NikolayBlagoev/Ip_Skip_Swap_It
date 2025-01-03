@@ -18,43 +18,15 @@ class CBS_item:
     visitable_stages: Any=field(compare=False)
     uniq_str: str=field(compare=False)
     speeds: List=field(compare=False)
+@dataclass
+class Visits:
+    ag: int
+    nd: int
+    enter_time: float
+    prv_nd: int
+    total_time: float
+    nxt_nd: int
 
-def count_conflicts(g, sol, count_per_node):
-    for k,v in g.nodes.items():    
-        count_per_node[k].clear()
-    for ag_sol in sol:
-            first_node = ag_sol[1][0][0]
-            prv_nd = first_node
-            prv_tm = 0
-            count = 0
-            # print(len(ag_sol[1]))
-            for nd in ag_sol[1]:
-                
-                
-                
-                count_per_node[nd[0]].append((ag_sol[2],nd[1],nd[2]))
-                prv_nd = nd[0]
-                prv_tm = nd[1]
-
-    count_col = 0
-
-    for k in range(len(g.nodes)):
-                
-                for idx, visit in enumerate(count_per_node[k]):
-                    
-                    for idx2, visit2 in enumerate(count_per_node[k]):
-                        if idx == idx2:
-                            continue
-                        if visit[0] == visit2[0]:
-                            continue
-                        # print(count_per_node)
-                        # print(visit)
-                        if (visit[1] <= visit2[1] and visit[2] > visit2[1]) or (visit[1] <= visit2[2] and visit[2] > visit2[2]):
-                            count_col += 0.01
-    count_col /= 2
-    for k,v in g.nodes.items():    
-        count_per_node[k].clear()
-    return count_col
 
 def visualise_type_3_conflicts(sol):
     for ag_sol in sol.solution:
@@ -63,6 +35,9 @@ def visualise_type_3_conflicts(sol):
                                             
         for nd in ag_sol[1]:
             print(nd)
+    for c in sol.conflicts:
+        if c.type == 3:
+            print(c.agidx,c.ndix,c.tmstart,c.tmend)
     return
 import itertools
 
@@ -85,7 +60,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
     for v in results:
         cost = max(v[0],cost)
     heapq.heappush(h,CBS_item(cost,results,conflicts, visitable, visitable_stages,"",[]))
-    count_per_node: Dict[int,int] = dict()
+    count_per_node: Dict[int,List[Visits]] = dict()
     count_per_partitions: Dict[int,int] = dict()
     for k,v in g.nodes.items():
         count_per_node[k] = []
@@ -142,6 +117,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
             prv_tm = 0
             count = 0
             # print(len(ag_sol[1]))
+            el_history = []
             for nd in ag_sol[1]:
                 if nd[0] == first_node and count == 1:
                     break
@@ -149,10 +125,16 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                     count += 1
                 
                 count_per_partitions[g.nodes[nd[0]].properties["partition"]].append((ag_sol[2],nd[1]))
-                count_per_node[nd[0]].append((ag_sol[2],nd[1],nd[2],nd[0],prv_nd))
+                _tmp = [ag_sol[2],nd[1],nd[2],nd[0],prv_nd,ag_sol[0]]
+                _tmp = Visits(ag_sol[2], nd[0], nd[1], prv_nd, ag_sol[0], None)
+                count_per_node[nd[0]].append(_tmp)
+                if len(el_history) > 0:
+                    el_history[-1].nxt_nd = nd[0]
+                el_history.append(_tmp)
+                
                 prv_nd = nd[0]
                 prv_tm = nd[1]
-            
+            el_history[-1].nxt_nd = first_node
             prv_nd = None
             for nd in ag_sol[1]:
                 
@@ -171,6 +153,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                 if k == 0:
                     continue
                 if len(count_per_partitions[k]) > mb_per_stage_max:
+                    # we have found a partition with more than the max nodes per stage
                     flag = True
                     # print(k)
                     count_per_partitions[k].sort(key = lambda el: el[1])
@@ -185,9 +168,9 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                     # print("EXCLUDE", exclude_agents)
                     if len(exclude_agents) == len(agents):
                         continue
-                    for comb in itertools.combinations(count_per_partitions[k][:ttl_count-6], ttl_count-9):
-                        if len(conflicts) > 2:
-                            continue
+                    for comb in itertools.combinations(count_per_partitions[k][:ttl_count-7], ttl_count-9):
+                        # if len(conflicts) > 6:
+                        #     continue
                         tmp = []
                         # print(k,comb)
                         for c in comb:
@@ -211,7 +194,9 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
             solutions.append(sol)
             continue
         impossible = False
+        
         if check_1 and not flag:
+            # type 1 constraints
             for k in range(len(g.nodes)):
                 # continue
                 if flag:
@@ -219,39 +204,49 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                 if g.nodes[k].properties["partition"] == 0:
                     continue
                 if len(count_per_node[k]) > memory:
+                    # anode has memory exceeded
                     flag = True
                     # print(k)
                     this_partition = g.nodes[k].properties["partition"]
                     this_partition = partitions[this_partition]
+                    ordering = map(lambda el: el[0], sol.speeds)
+                    
                     p_0 = []
                     p_1 = []
                     # print(this_partition)
+                    slowest_node = None
+                    
                     for p in this_partition:
                         if p in count_per_node:
                             for l in count_per_node[p]:
-                                p_0.append((l[0],l[3],l[4]))
+                                # t: Visits = Visits()
+                                # t.total_time
+                                assert l.nd == p
+                                p_0.append((l.ag,l.prv_nd,l.nxt_nd,l.nd,l.total_time))
+                                
+
                             p_1.append(p)
                     # if len(p_0)
                     cm = make_bipartite_graph_CBS(g,p_0,p_1,sol.conflicts,agents,sol.visitable,memory)
                     try:
-                        ret = bipartite_matching(cm)
+                        ret = minimise_max(cm,sol.dist)
                     except ValueError:
-                        ret = [float("inf")]
-                    if ret[0] > 1000:
+                        ret = None
+                    if ret == None:
                         impossible = True
                         continue
                     tmp = []
                     
                             
-                    for r in ret[1]:
+                    for idx,r in enumerate(ret):
                         # print(r)
-                        if r[0] >= len(p_0):
+                        if r >= len(p_0):
                             continue
-                        nd = p_1[r[1]//3]
+                        nd = p_1[idx//3]
                         for p in this_partition:
                             if p == nd:
                                 continue
-                            tmp.append(Conflict(p_0[r[0]][0],p,-1000,float("inf"),1))
+                            tmp.append(Conflict(p_0[r][0],p,-1000,float("inf"),1))
                     conflicts.append(tmp)       
                     break
         if impossible:
@@ -259,6 +254,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
         conflict_3 = False
 
         if constraints[2] and not flag:
+            # print("CHECKING TYPE 3")
             checked = []
             for ag_idx_consider,ag in enumerate(sol.speeds):
                 if ag_idx_consider > len(sol.speeds)/3:
@@ -309,7 +305,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
                                             exit()
                                         
                                     conflict_3 = True
-                                    if ag_idx_consider2 < 2:
+                                    if ag_idx_consider2 < 4:
 
                                         conflicts.append([Conflict(visit[0],k,visit2[1],visit2[2],3)])  
                                     
@@ -320,7 +316,7 @@ def CBS(g:Graph, agents: list[Agent], heuristic, partitions, constraints = [Fals
 
         if not flag:
             print(sol.dist)
-            # print(sol.visitable)
+            # visualise_type_3_conflicts(sol)
             return sol
             
         # print(len(conflicts))

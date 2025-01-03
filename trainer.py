@@ -23,11 +23,11 @@ dmodel = 2048
 num_heads = 16
 
 # COMMENT OUT:
-seq_l = 128
-n_layers = 2
-batch_size = 4
-dmodel = 288
-num_heads = 2
+# seq_l = 128
+# n_layers = 2
+# batch_size = 4
+# dmodel = 288
+# num_heads = 2
 
 if __name__ == '__main__':
     curr_id = int(argv[1])
@@ -91,6 +91,7 @@ if __name__ == '__main__':
             # with open(f"log_stats_proj_2_{curr_id}.txt", "a") as log:
             #     log.write(f"Paritions {partitions[own_stage + 1]}, {rank_order}, {own_stage}\n")
             return partitions[own_stage + 1][rank_order]
+        
         elif setting == "ca-partial":
             # ca-paths
             b1 = bid % config["ours-sends"]
