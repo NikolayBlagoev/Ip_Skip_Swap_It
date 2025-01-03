@@ -156,7 +156,8 @@ class SubP(object):
                     
                     self.target[task.tag] = y
                     tm1 = time()
-                    x = self.net.embed(x)
+                    with torch.autograd.graph.save_on_cpu():
+                        x = self.net.embed(x).to("cpu")
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
@@ -216,7 +217,8 @@ class SubP(object):
 
                     self.buffer_in[task.tag] = x
                     tm1 = time()
-                    x = self.net(x)
+                    with torch.autograd.graph.save_on_cpu():
+                        x = self.net(x).to("cpu")
                     x.retain_grad()
                     self.buffer_out[task.tag] = x
                     tm2 = time()
@@ -238,7 +240,7 @@ class SubP(object):
                     tm1 = time()
                     with no_grad():
                         output = output.to(self.device)
-                    inp_batch = self.buffer_out[task.tag]
+                    inp_batch = self.buffer_out[task.tag].to(self.device)
                     
                     inp_batch.backward(output)
                     tm2 = time()
