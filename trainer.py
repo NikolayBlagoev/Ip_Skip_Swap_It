@@ -125,7 +125,11 @@ if __name__ == '__main__':
 
         queue_in = Queue(1024)
         queue_out = Queue(1024)
-        
+        device = "cuda"
+        if curr_id > 6:
+            device = "cuda:1"
+        if curr_id > 14:
+            device = "cuda:2"
         subprocess = Process(target=run_p,args=(n.addr[0],partitions,queue_out,queue_in,curr_id,own_stage,seq_l,n_layers,batch_size,dmodel,num_heads,memory,compute_time,send_mbs,cost_map, "cuda")) 
         trainingp = PPProtocl(world_size, own_stage, commfunc, None, len(partitions[0]), memory, queue_in, queue_out, subprocess, MB_SEND_COUNT=send_mbs, dp_order=rank_order)
         trainingp.set_lower(delayer)
