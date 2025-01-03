@@ -75,13 +75,14 @@ def run_p(main_addr, partitions, queue_in: Queue, queue_out: Queue, node_id: int
         ts = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l)
         vals = Wikipedia_Dataset(tkns,batch_size = batch_size, seq_l=seq_l, split = "train")
         net = LLamaFirstStage(tkns.vocab_size, dmodel, num_heads, n_layers, ctx_size= seq_l,device=device)
-        
+        net.to("device")
         optimizer = DP_optim(4e-3, net, group, device)
         with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
             loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,ts,vals,device=device, mb_count=mb_count, memory = memory,process_time=process_time)
             loc.start()
     else:
         net = LLamaStage(ctx_size=seq_l, dmodel=dmodel,num_heads=num_heads,n_layers=n_layers,device=device)
+        net.to("device")
         optimizer = DP_optim(4e-3, net, group, device)
         # with open(f'log{node_id}.txt', 'a') as file, redirect_stdout(file):
         loc =  SubP(queue_in,queue_out,net,optimizer,node_id,stage,None,None,device=device,  mb_count=mb_count, memory = memory,process_time=process_time)
