@@ -9,6 +9,7 @@ from .dp_group import DP_Group, initialise_communication
 from .dp_optimizer import DP_optim
 from torch import cuda, no_grad
 import traceback
+import torch
 from contextlib import redirect_stdout
 from simplellm.dataloaders import Wikipedia_Dataset, TinyStories
 import torch.nn.functional as F
